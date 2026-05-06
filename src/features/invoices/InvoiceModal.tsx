@@ -78,7 +78,11 @@ export function InvoiceModal({ invoice, onClose, onSave, onDelete }: Props) {
 
   const onProductChange = (i: number, productId: string) => {
     const p = products.find((x) => x.id === productId);
-    updateItem(i, { product_id: productId, unit_price_snapshot: p?.price ?? 0 });
+    updateItem(i, {
+      product_id: productId,
+      unit_price_snapshot: p?.price ?? 0,
+      description: p?.is_service ? (p.description ?? '') : undefined,
+    });
   };
 
   const handlePrint = async () => {
@@ -179,33 +183,36 @@ export function InvoiceModal({ invoice, onClose, onSave, onDelete }: Props) {
         </div>
         {form.line_items.map((item, i) => {
           const lineTotal = item.unit_price_snapshot * item.qty;
+          const itemProduct = products.find((x) => x.id === item.product_id);
           return (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
-              <input
-                type="number"
-                min="1"
-                value={item.qty}
-                onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
-                style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
-              />
-              <div style={{ fontSize: 12, color: C.slate }}>RM {item.unit_price_snapshot.toLocaleString()}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>RM {lineTotal.toLocaleString()}</div>
-              <button
-                onClick={() => removeItem(i)}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  border: `1px solid ${C.border}`,
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: '#C0321A',
-                  fontSize: 14,
-                }}
-              >
-                ×
-              </button>
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+                <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
+                <input
+                  type="number"
+                  min="1"
+                  value={item.qty}
+                  onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
+                  style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
+                />
+                <div style={{ fontSize: 12, color: C.slate }}>RM {item.unit_price_snapshot.toLocaleString()}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>RM {lineTotal.toLocaleString()}</div>
+                <button
+                  onClick={() => removeItem(i)}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: '#C0321A', fontSize: 14 }}
+                >
+                  ×
+                </button>
+              </div>
+              {itemProduct?.is_service && (
+                <textarea
+                  value={item.description ?? ''}
+                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  rows={2}
+                  placeholder="Service description (editable per invoice)…"
+                  style={{ ...inputStyle, marginTop: 6, fontSize: 12, resize: 'vertical', lineHeight: 1.5, background: '#F9F9FF' }}
+                />
+              )}
             </div>
           );
         })}

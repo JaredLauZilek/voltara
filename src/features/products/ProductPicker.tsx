@@ -8,12 +8,15 @@ interface Props {
 }
 
 /**
- * Canonical product (SKU) dropdown — used by Invoice / Quote / PO line items.
- * Adding a SKU in the Inventory & Products screen makes it appear in every
- * line-item dropdown immediately. Never replace with a hardcoded list.
+ * Canonical product/service dropdown — used by Invoice / Quote / PO line items.
+ * Products and services are grouped separately. Adding a SKU or service in the
+ * Inventory & Products screen makes it appear here immediately.
  */
-export function ProductPicker({ value, onChange, placeholder = 'Select product…' }: Props) {
+export function ProductPicker({ value, onChange, placeholder = 'Select product or service…' }: Props) {
   const { data: products = [], isLoading } = useProducts();
+  const physical = products.filter((p) => !p.is_service);
+  const services = products.filter((p) => p.is_service);
+
   return (
     <select
       value={value ?? ''}
@@ -30,14 +33,21 @@ export function ProductPicker({ value, onChange, placeholder = 'Select product�
         width: '100%',
       }}
     >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {products.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
+      <option value="" disabled>{placeholder}</option>
+      {physical.length > 0 && (
+        <optgroup label="Products">
+          {physical.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </optgroup>
+      )}
+      {services.length > 0 && (
+        <optgroup label="Services">
+          {services.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </optgroup>
+      )}
     </select>
   );
 }

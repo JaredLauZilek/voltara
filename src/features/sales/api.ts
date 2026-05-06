@@ -23,3 +23,13 @@ export async function deleteQuote(id: string): Promise<void> {
   const { error } = await supabase.from('quotes').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function expireOverdueQuotes(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase
+    .from('quotes')
+    .update({ status: 'Expired' })
+    .lt('valid_to', today)
+    .in('status', ['Draft', 'Sent']);
+  if (error) throw error;
+}

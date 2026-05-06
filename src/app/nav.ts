@@ -8,10 +8,12 @@ export type ScreenId =
   | 'customers'
   | 'social'
   | 'sales'
+  | 'salesmanagers'
   | 'purchaseorders'
   | 'products'
   | 'suppliers'
-  | 'seo';
+  | 'seo'
+  | 'formdesigns';
 
 export interface NavEntry {
   id: ScreenId;
@@ -26,10 +28,12 @@ export const NAV: NavEntry[] = [
   { id: 'customers',      icon: '◉', label: 'Customers' },
   { id: 'social',         icon: '◫', label: 'Social Media Planner' },
   { id: 'sales',          icon: '◐', label: 'Sales' },
+  { id: 'salesmanagers',  icon: '◈', label: 'Sales Managers' },
   { id: 'purchaseorders', icon: '◧', label: 'Purchase Orders' },
   { id: 'products',       icon: '▦', label: 'Inventory & Products' },
   { id: 'suppliers',      icon: '◑', label: 'Suppliers' },
   { id: 'seo',            icon: '◇', label: 'SEO Monitor' },
+  { id: 'formdesigns',    icon: '◨', label: 'Form Designs' },
 ];
 
 export const SCREEN_TITLES: Record<ScreenId, string> = {
@@ -39,8 +43,10 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   customers:      'Customers',
   social:         'Social Media Planner',
   sales:          'Sales',
+  salesmanagers:  'Sales Managers',
   purchaseorders: 'Purchase Orders',
   products:       'Inventory & Products',
   suppliers:      'Suppliers',
   seo:            'SEO Monitor',
+  formdesigns:    'Form Designs',
 };

@@ -3,6 +3,7 @@ import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
 import { CustomerPicker } from '@/features/customers';
 import { ProductPicker, useProducts } from '@/features/products';
+import { SalesManagerPicker } from '@/features/sales-managers';
 import type { LineItem } from '@/shared/types';
 import { todayISO } from '@/shared/lib/format';
 import { QUOTE_STATUSES, QUOTE_TYPES, calcQuoteTotal } from './types';
@@ -42,6 +43,7 @@ export function QuoteModal({ quote, onClose, onSave, onDelete }: Props) {
       id: `Q-2026-${String(Date.now()).slice(-3)}`,
       type: 'Quotation',
       customer_id: '',
+      sales_manager_id: null,
       line_items: [],
       discount: 0,
       notes: null,
@@ -66,7 +68,11 @@ export function QuoteModal({ quote, onClose, onSave, onDelete }: Props) {
     setForm((f) => ({ ...f, line_items: f.line_items.filter((_, idx) => idx !== i) }));
   const onProductChange = (i: number, productId: string) => {
     const p = products.find((x) => x.id === productId);
-    updateItem(i, { product_id: productId, unit_price_snapshot: p?.price ?? 0 });
+    updateItem(i, {
+      product_id: productId,
+      unit_price_snapshot: p?.price ?? 0,
+      description: p?.is_service ? (p.description ?? '') : undefined,
+    });
   };
 
   return (
@@ -116,6 +122,15 @@ export function QuoteModal({ quote, onClose, onSave, onDelete }: Props) {
         <CustomerPicker value={form.customer_id || null} onChange={(id) => setForm((f) => ({ ...f, customer_id: id }))} />
       </div>
 
+      <div style={{ background: C.seasalt, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Sales Manager</div>
+        <SalesManagerPicker
+          value={form.sales_manager_id ?? null}
+          onChange={(id) => setForm((f) => ({ ...f, sales_manager_id: id }))}
+          placeholder="No sales manager assigned"
+        />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           <label style={labelStyle}>Valid From</label>
@@ -157,28 +172,48 @@ export function QuoteModal({ quote, onClose, onSave, onDelete }: Props) {
             + Add Item
           </button>
         </div>
-        {form.line_items.map((item, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-            <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
-            <input
-              type="number"
-              min="1"
-              value={item.qty}
-              onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
-              style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
-            />
-            <div style={{ fontSize: 12, color: C.slate }}>RM {item.unit_price_snapshot.toLocaleString()}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>
-              RM {(item.qty * item.unit_price_snapshot).toLocaleString()}
+        {form.line_items.map((item, i) => {
+          const itemProduct = products.find((x) => x.id === item.product_id);
+          return (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+                <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
+                <input
+                  type="number"
+                  min="1"
+                  value={item.qty}
+                  onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
+                  style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={item.unit_price_snapshot}
+                  onChange={(e) => updateItem(i, { unit_price_snapshot: parseFloat(e.target.value) || 0 })}
+                  style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'right' }}
+                />
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>
+                  RM {(item.qty * item.unit_price_snapshot).toLocaleString()}
+                </div>
+                <button
+                  onClick={() => removeItem(i)}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: '#C0321A' }}
+                >
+                  ×
+                </button>
+              </div>
+              {itemProduct?.is_service && (
+                <textarea
+                  value={item.description ?? ''}
+                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  rows={2}
+                  placeholder="Service description (editable per quotation)…"
+                  style={{ ...inputStyle, marginTop: 6, fontSize: 12, resize: 'vertical', lineHeight: 1.5, background: '#F9F9FF' }}
+                />
+              )}
             </div>
-            <button
-              onClick={() => removeItem(i)}
-              style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: '#C0321A' }}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+          );
+        })}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: `1px solid ${C.divider}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

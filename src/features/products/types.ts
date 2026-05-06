@@ -6,8 +6,9 @@ export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 
 export const PRODUCT_CATEGORIES = ['Charger Units', 'Electrical', 'Accessories', 'Cables'] as const;
 
-export function stockStatus(p: Product): 'In Stock' | 'Low Stock' | 'Out of Stock' {
-  if (p.qty <= 0) return 'Out of Stock';
+export function stockStatus(p: Product): 'In Stock' | 'Low Stock' | 'Out of Stock' | 'Service' {
+  if (p.is_service) return 'Service';
+  if (p.qty == null || p.qty <= 0) return 'Out of Stock';
   if (p.qty < p.reorder_level) return 'Low Stock';
   return 'In Stock';
 }

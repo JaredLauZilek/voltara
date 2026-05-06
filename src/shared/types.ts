@@ -7,4 +7,5 @@ export interface LineItem {
   product_id: string;
   qty: number;
   unit_price_snapshot: number;
+  description?: string; // editable per line item; pre-populated from service's default description
 }

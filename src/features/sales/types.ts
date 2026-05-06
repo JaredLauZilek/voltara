@@ -4,7 +4,7 @@ export type Quote = Database['public']['Tables']['quotes']['Row'];
 export type QuoteInsert = Database['public']['Tables']['quotes']['Insert'];
 export type QuoteUpdate = Database['public']['Tables']['quotes']['Update'];
 
-export const QUOTE_STATUSES = ['Draft', 'Sent', 'Viewed', 'Accepted', 'Declined', 'Expired'] as const;
+export const QUOTE_STATUSES = ['Draft', 'Sent', 'Case Won', 'Case Lost', 'Expired'] as const;
 export const QUOTE_TYPES = ['Quotation', 'Proposal'] as const;
 
 export function calcQuoteTotal(items: { qty: number; unit_price_snapshot: number }[], discount: number): number {

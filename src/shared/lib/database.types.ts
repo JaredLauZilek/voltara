@@ -54,13 +54,15 @@ export interface Database {
           category: string;
           cost: number;
           price: number;
-          qty: number;
+          qty: number | null;
           reorder_level: number;
           supplier_id: string | null;
           location: string | null;
+          is_service: boolean;
+          description: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['products']['Row'], 'created_at'> & { created_at?: string };
+        Insert: Omit<Database['public']['Tables']['products']['Row'], 'created_at' | 'is_service'> & { created_at?: string; is_service?: boolean };
         Update: Partial<Database['public']['Tables']['products']['Insert']>;
       };
       orders: {
@@ -98,9 +100,10 @@ export interface Database {
           status: 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
           issue_date: string;
           due_date: string;
+          stock_deducted: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'created_at'> & { created_at?: string };
+        Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'created_at' | 'stock_deducted'> & { created_at?: string; stock_deducted?: boolean };
         Update: Partial<Database['public']['Tables']['invoices']['Insert']>;
       };
       quotes: {
@@ -108,16 +111,31 @@ export interface Database {
           id: string;
           type: 'Quotation' | 'Proposal';
           customer_id: string;
+          sales_manager_id: string | null;
           line_items: LineItem[];
           discount: number;
           notes: string | null;
-          status: 'Draft' | 'Sent' | 'Viewed' | 'Accepted' | 'Declined' | 'Expired';
+          status: 'Draft' | 'Sent' | 'Case Won' | 'Case Lost' | 'Expired';
           valid_from: string;
           valid_to: string;
+          stock_deducted: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['quotes']['Row'], 'created_at'> & { created_at?: string };
+        Insert: Omit<Database['public']['Tables']['quotes']['Row'], 'created_at' | 'stock_deducted'> & { created_at?: string; stock_deducted?: boolean };
         Update: Partial<Database['public']['Tables']['quotes']['Insert']>;
+      };
+      sales_managers: {
+        Row: {
+          id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          target_revenue: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['sales_managers']['Row'], 'created_at' | 'active'> & { created_at?: string; active?: boolean };
+        Update: Partial<Database['public']['Tables']['sales_managers']['Insert']>;
       };
       purchase_orders: {
         Row: {
@@ -267,6 +285,67 @@ export interface Database {
         };
         Insert: Database['public']['Tables']['seo_integrations']['Row'];
         Update: Partial<Database['public']['Tables']['seo_integrations']['Row']>;
+      };
+      company_profile: {
+        Row: {
+          id: string;
+          company_name: string;
+          address: string | null;
+          registration_no: string | null;
+          tax_id: string | null;
+          phone: string | null;
+          email: string | null;
+          website: string | null;
+          bank_details: string | null;
+          logo_data_url: string | null;
+          brand_color: string;
+          font_family: 'Figtree' | 'Helvetica' | 'Times' | 'Courier';
+          paper_size: 'A4' | 'Letter';
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['company_profile']['Row'], 'updated_at' | 'id' | 'company_name' | 'brand_color' | 'font_family' | 'paper_size'> & {
+          id?: string;
+          company_name?: string;
+          brand_color?: string;
+          font_family?: 'Figtree' | 'Helvetica' | 'Times' | 'Courier';
+          paper_size?: 'A4' | 'Letter';
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['company_profile']['Insert']>;
+      };
+      form_designs: {
+        Row: {
+          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order';
+          accent_color: string | null;
+          header_note: string | null;
+          footer_text: string | null;
+          terms_text: string | null;
+          payment_instructions: string | null;
+          show_logo: boolean;
+          show_company_address: boolean;
+          show_customer_address: boolean;
+          show_notes: boolean;
+          show_signature_block: boolean;
+          column_visibility: {
+            sku: boolean;
+            description: boolean;
+            qty: boolean;
+            unit_price: boolean;
+            tax: boolean;
+            line_total: boolean;
+          };
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['form_designs']['Row'], 'updated_at' | 'show_logo' | 'show_company_address' | 'show_customer_address' | 'show_notes' | 'show_signature_block' | 'column_visibility'> & {
+          show_logo?: boolean;
+          show_company_address?: boolean;
+          show_customer_address?: boolean;
+          show_notes?: boolean;
+          show_signature_block?: boolean;
+          column_visibility?: Database['public']['Tables']['form_designs']['Row']['column_visibility'];
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['form_designs']['Insert']>;
       };
     };
     Views: {
