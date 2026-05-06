@@ -1,0 +1,160 @@
+import { useState } from 'react';
+import { C } from '@/shared/tokens';
+import { KPICard } from '@/shared/components/KPICard';
+import { Toolbar } from '@/shared/components/Toolbar';
+import { formatRM, formatRMShort } from '@/shared/lib/format';
+import { useCustomers } from '@/features/customers';
+import { useProducts } from '@/features/products';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from './hooks';
+import { InvoiceModal } from './InvoiceModal';
+import { calcInvoiceTotals } from './totals';
+import { INVOICE_STATUSES } from './types';
+import type { Invoice, InvoiceInsert } from './types';
+
+const STATUS_COLORS: Record<Invoice['status'], { bg: string; color: string }> = {
+  Draft:     { bg: '#F3F3F3', color: '#767B77' },
+  Sent:      { bg: '#E3F0FF', color: '#1A62C0' },
+  Paid:      { bg: '#E4F3E3', color: '#1B512D' },
+  Overdue:   { bg: '#FDEAEA', color: '#C0321A' },
+  Cancelled: { bg: '#FFF0E0', color: '#B45309' },
+};
+
+export function InvoicesScreen() {
+  const { data: invoices = [] } = useInvoices();
+  const { data: customers = [] } = useCustomers();
+  const { data: products = [] } = useProducts();
+  const createMut = useCreateInvoice();
+  const updateMut = useUpdateInvoice();
+  const deleteMut = useDeleteInvoice();
+  const [filter, setFilter] = useState<'All' | Invoice['status']>('All');
+  const [search, setSearch] = useState('');
+  const [modal, setModal] = useState<Invoice | 'new' | null>(null);
+
+  const customerById = new Map(customers.map((c) => [c.id, c]));
+  const productById = new Map(products.map((p) => [p.id, p]));
+
+  const filtered = invoices.filter((inv) => {
+    if (filter !== 'All' && inv.status !== filter) return false;
+    if (!search) return true;
+    const customer = customerById.get(inv.customer_id);
+    const haystack = `${inv.id} ${customer?.name ?? ''}`.toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
+
+  const totalCollected = invoices
+    .filter((i) => i.status === 'Paid')
+    .reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax).total, 0);
+  const overdueCount = invoices.filter((i) => i.status === 'Overdue').length;
+  const avgValue =
+    invoices.length === 0
+      ? 0
+      : invoices.reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax).total, 0) / invoices.length;
+
+  const handleSave = (row: InvoiceInsert) => {
+    if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
+    else if (modal && typeof modal !== 'string')
+      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <KPICard label="Total Invoices" value={invoices.length} sub="All time" accent />
+        <KPICard label="Collected" value={formatRMShort(totalCollected)} sub="Paid invoices" />
+        <KPICard label="Avg Invoice Value" value={formatRM(Math.round(avgValue))} sub="Across all" />
+        <KPICard label="Overdue" value={overdueCount} sub="Requires follow-up" />
+      </div>
+
+      <Toolbar
+        filters={['All', ...INVOICE_STATUSES]}
+        filter={filter}
+        onFilterChange={(f) => setFilter(f as typeof filter)}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search invoices…"
+        primaryLabel="+ New Invoice"
+        onPrimary={() => setModal('new')}
+      />
+
+      <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: C.seasalt }}>
+              {['Invoice ID', 'Customer', 'Items', 'Amount', 'Status', 'Issued', 'Due'].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.slate,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    borderBottom: `1px solid ${C.border}`,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((inv) => {
+              const total = calcInvoiceTotals(inv.line_items, inv.discount, inv.tax).total;
+              const customer = customerById.get(inv.customer_id);
+              const itemSummary = inv.line_items
+                .map((li) => `${li.qty}× ${productById.get(li.product_id)?.name ?? li.product_id}`)
+                .join(', ');
+              const sc = STATUS_COLORS[inv.status];
+              return (
+                <tr
+                  key={inv.id}
+                  style={{ borderBottom: `1px solid ${C.divider}`, cursor: 'pointer' }}
+                  onClick={() => setModal(inv)}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = C.hoverRow)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{inv.id}</td>
+                  <td style={{ padding: '13px 16px', fontWeight: 600 }}>{customer?.name ?? inv.customer_id}</td>
+                  <td style={{ padding: '13px 16px', color: C.slate, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {itemSummary || '—'}
+                  </td>
+                  <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{formatRM(total)}</td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <span
+                      style={{
+                        background: sc.bg,
+                        color: sc.color,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '3px 10px',
+                        borderRadius: 99,
+                      }}
+                    >
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '13px 16px', color: C.slate }}>{inv.issue_date}</td>
+                  <td style={{ padding: '13px 16px', color: C.slate }}>{inv.due_date}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No invoices found.</div>
+        )}
+      </div>
+
+      {modal && (
+        <InvoiceModal
+          invoice={modal === 'new' ? null : modal}
+          onClose={() => setModal(null)}
+          onSave={handleSave}
+          onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
+        />
+      )}
+    </div>
+  );
+}
