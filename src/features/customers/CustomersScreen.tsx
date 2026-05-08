@@ -3,6 +3,7 @@ import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Badge } from '@/shared/components/Badge';
 import { Toolbar } from '@/shared/components/Toolbar';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
 
 import { useCustomersWithStats, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from './hooks';
 import { CustomerModal } from './CustomerModal';
@@ -17,12 +18,9 @@ export function CustomersScreen() {
   const [typeFilter, setTypeFilter] = useState('All');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [modal, setModal] = useState<Customer | 'new' | null>(null);
-
-  const PAGE_SIZE = 10;
 
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
@@ -33,11 +31,9 @@ export function CustomersScreen() {
     return true;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  const resetPage = () => setPage(1);
+  const pagination = usePagination(filtered);
+  const pageRows = pagination.pageItems;
+  const resetPage = pagination.reset;
 
   const pageIds = pageRows.map((c) => c.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
@@ -216,29 +212,15 @@ export function CustomersScreen() {
         {!isLoading && filtered.length === 0 && (
           <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No customers found.</div>
         )}
-        {filtered.length > PAGE_SIZE && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: `1px solid ${C.border}` }}>
-            <span style={{ fontSize: 13, color: C.slate }}>
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
-            </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, border: `1px solid ${p === safePage ? C.green : C.border}`,
-                    background: p === safePage ? C.green : C.white,
-                    color: p === safePage ? C.white : C.slate,
-                    fontSize: 13, fontWeight: 600, fontFamily: 'Figtree', cursor: 'pointer',
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          pageSize={pagination.pageSize}
+          from={pagination.from}
+          to={pagination.to}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       {modal && (

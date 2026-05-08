@@ -60,7 +60,7 @@ export function FormPreview({ profile, design, docType }: Props) {
       {/* Header — logo + company info */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24 }}>
         {design.show_logo && profile.logo_data_url ? (
-          <img src={profile.logo_data_url} alt="Logo" style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain' }} />
+          <img src={profile.logo_data_url} alt="Logo" style={{ height: 40, maxWidth: 130, objectFit: 'contain', objectPosition: 'left center' }} />
         ) : design.show_logo ? (
           <div style={{ width: 120, height: 60, background: C.seasalt, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: C.slate }}>
             (logo)
@@ -70,7 +70,7 @@ export function FormPreview({ profile, design, docType }: Props) {
         {design.show_company_address && (
           <div style={{ textAlign: 'right', lineHeight: 1.45 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: accent }}>{profile.company_name}</div>
-            {profile.address       && <div>{profile.address}</div>}
+            {profile.address       && <div style={{ whiteSpace: 'pre-wrap' }}>{profile.address}</div>}
             {profile.registration_no && <div>Reg: {profile.registration_no}</div>}
             {profile.tax_id        && <div>SST: {profile.tax_id}</div>}
             {profile.phone         && <div>{profile.phone}</div>}

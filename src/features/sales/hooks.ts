@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
+import type { Attachment } from '@/shared/types';
 import type { QuoteInsert, QuoteUpdate } from './types';
 
 export function useQuotes() {
@@ -32,7 +33,8 @@ export function useUpdateQuote() {
 export function useDeleteQuote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.deleteQuote(id),
+    mutationFn: ({ id, poAttachments, proposalAttachments }: { id: string; poAttachments: Attachment[]; proposalAttachments: Attachment[] }) =>
+      api.deleteQuote(id, poAttachments, proposalAttachments),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['quotes'] });
       qc.invalidateQueries({ queryKey: ['products'] });

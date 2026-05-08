@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
 import type { SalesManager, SalesManagerInsert } from './types';
@@ -30,6 +30,88 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
+const MAX_BYTES = 1_000_000;
+const MAX_DIMENSION = 256;
+
+function AvatarUploader({ value, name, onChange }: { value: string | null; name: string; onChange: (url: string | null) => void }) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const initials = name.trim().split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+
+  const handleFile = (file: File) => {
+    setError(null);
+    if (!file.type.startsWith('image/')) { setError('Image files only (PNG / JPG).'); return; }
+    if (file.size > MAX_BYTES) { setError('Image must be under 1MB.'); return; }
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { setError('Could not process image.'); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      onChange(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => setError('Could not load image.');
+    img.src = URL.createObjectURL(file);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        onClick={() => fileInput.current?.click()}
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          border: `2px dashed ${isDragging ? C.green : C.border}`,
+          background: isDragging ? C.honeydew : (value ? 'transparent' : C.seasalt),
+          cursor: 'pointer',
+          flexShrink: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {value ? (
+          <img src={value} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span style={{ fontSize: 22, fontWeight: 700, color: C.green }}>{initials}</span>
+        )}
+      </div>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 4 }}>
+          {value ? 'Click or drop to replace photo' : 'Click or drop to upload photo'}
+        </div>
+        <div style={{ fontSize: 11, color: C.slate }}>PNG or JPG · up to 1MB</div>
+        {value && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onChange(null); setError(null); }}
+            style={{ marginTop: 4, border: 'none', background: 'transparent', color: '#C0321A', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Figtree', padding: 0 }}
+          >
+            Remove photo
+          </button>
+        )}
+        {error && <div style={{ marginTop: 4, fontSize: 11, color: '#C0321A', fontWeight: 600 }}>{error}</div>}
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/png,image/jpeg"
+        style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+      />
+    </div>
+  );
+}
+
 export function SalesManagerModal({ manager, onClose, onSave, onDelete }: Props) {
   const isNew = !manager;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -41,6 +123,7 @@ export function SalesManagerModal({ manager, onClose, onSave, onDelete }: Props)
       phone: null,
       target_revenue: 0,
       active: true,
+      photo_data_url: null,
     }
   );
 
@@ -50,6 +133,12 @@ export function SalesManagerModal({ manager, onClose, onSave, onDelete }: Props)
       subtitle={!isNew ? manager.id : undefined}
       onClose={onClose}
     >
+      <AvatarUploader
+        value={form.photo_data_url ?? null}
+        name={form.name}
+        onChange={(url) => setForm((f) => ({ ...f, photo_data_url: url }))}
+      />
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Full Name</label>

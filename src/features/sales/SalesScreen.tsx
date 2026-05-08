@@ -3,7 +3,8 @@ import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Modal } from '@/shared/components/Modal';
 import { Toolbar } from '@/shared/components/Toolbar';
-import { formatRM, formatRMShort } from '@/shared/lib/format';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
+import { formatRM, formatRMShort, todayISO } from '@/shared/lib/format';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useSalesManagers } from '@/features/sales-managers';
@@ -26,10 +27,23 @@ export function SalesScreen() {
   const managerById = new Map(salesManagers.map((m) => [m.id, m]));
 
   const [filterStatus, setFilterStatus] = useState<'All' | Quote['status']>('All');
+  const [filterManager, setFilterManager] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'list' | 'pipeline'>('list');
   const [modal, setModal] = useState<Quote | 'new' | null>(null);
   const [pendingChange, setPendingChange] = useState<{ quote: Quote; newStatus: Quote['status'] } | null>(null);
+
+  // Always resolve the modal's quote against the latest query data so the
+  // modal (and the print preview) reflect freshly-saved values.
+  const modalQuote =
+    modal && modal !== 'new' ? (quotes.find((q) => q.id === modal.id) ?? modal) : null;
+  const [dragOverStatus, setDragOverStatus] = useState<Quote['status'] | null>(null);
+  const [overflowStatus, setOverflowStatus] = useState<Quote['status'] | null>(null);
+
+  const hasSecondaryFilters = !!filterManager || !!filterDateFrom || !!filterDateTo;
+  const clearSecondary = () => { setFilterManager(''); setFilterDateFrom(''); setFilterDateTo(''); };
 
   const confirmStatusChange = () => {
     if (!pendingChange) return;
@@ -41,10 +55,15 @@ export function SalesScreen() {
 
   const filtered = quotes.filter((q) => {
     if (filterStatus !== 'All' && q.status !== filterStatus) return false;
+    if (filterManager && q.sales_manager_id !== filterManager) return false;
+    if (filterDateFrom && q.valid_from < filterDateFrom) return false;
+    if (filterDateTo && q.valid_from > filterDateTo) return false;
     if (!search) return true;
     const customer = customerById.get(q.customer_id);
     return `${q.id} ${customer?.name ?? ''}`.toLowerCase().includes(search.toLowerCase());
   });
+
+  const pagination = usePagination(filtered);
 
   const pipelineValue = quotes
     .filter((q) => ['Draft', 'Sent'].includes(q.status))
@@ -60,7 +79,9 @@ export function SalesScreen() {
   const handleSave = (row: QuoteInsert) => {
     if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
     else if (modal && typeof modal !== 'string')
-      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+      // Keep the modal open after saving an existing quote so the user can
+      // immediately print the PDF if they want.
+      updateMut.mutate({ id: modal.id, patch: row });
   };
 
   return (
@@ -107,12 +128,86 @@ export function SalesScreen() {
         }
       />
 
+      {/* Secondary filters: manager + date range */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Manager</span>
+          <select
+            value={filterManager}
+            onChange={(e) => setFilterManager(e.target.value)}
+            style={{
+              padding: '7px 10px',
+              borderRadius: 10,
+              border: `1px solid ${filterManager ? C.green : C.border}`,
+              fontFamily: 'Figtree',
+              fontSize: 13,
+              color: filterManager ? C.green : C.slate,
+              fontWeight: filterManager ? 700 : 500,
+              background: filterManager ? C.honeydew : C.white,
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">All managers</option>
+            {salesManagers.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ width: 1, height: 24, background: C.border }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Valid From</span>
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            style={{
+              padding: '7px 10px',
+              borderRadius: 10,
+              border: `1px solid ${filterDateFrom ? C.green : C.border}`,
+              fontFamily: 'Figtree',
+              fontSize: 13,
+              color: filterDateFrom ? C.green : C.slate,
+              background: filterDateFrom ? C.honeydew : C.white,
+              outline: 'none',
+            }}
+          />
+          <span style={{ fontSize: 12, color: C.slate }}>to</span>
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            style={{
+              padding: '7px 10px',
+              borderRadius: 10,
+              border: `1px solid ${filterDateTo ? C.green : C.border}`,
+              fontFamily: 'Figtree',
+              fontSize: 13,
+              color: filterDateTo ? C.green : C.slate,
+              background: filterDateTo ? C.honeydew : C.white,
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        {hasSecondaryFilters && (
+          <button
+            onClick={clearSecondary}
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.slate, fontFamily: 'Figtree', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {tab === 'list' && (
         <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.seasalt }}>
-                {['Ref', 'Type', 'Customer', 'Manager', 'Items', 'Total', 'Status', 'Expires'].map((h) => (
+                {['Ref', 'Type', 'Customer', 'Manager', 'Total', 'Status', 'Days Idle', 'Last Follow-up', 'Expires'].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -132,7 +227,7 @@ export function SalesScreen() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((q) => {
+              {pagination.pageItems.map((q) => {
                 const customer = customerById.get(q.customer_id);
                 return (
                   <tr
@@ -157,11 +252,27 @@ export function SalesScreen() {
                         {q.type}
                       </span>
                     </td>
-                    <td style={{ padding: '13px 16px', fontWeight: 600 }}>{customer?.name ?? q.customer_id}</td>
+                    <td style={{ padding: '13px 16px' }}>
+                      <div style={{ fontWeight: 600 }}>{customer?.name ?? q.customer_id}</div>
+                      {customer && (
+                        <div style={{ marginTop: 3 }}>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 7px',
+                            borderRadius: 6,
+                            letterSpacing: '0.04em',
+                            background: customer.type === 'Residential' ? C.divider : C.honeydew,
+                            color: customer.type === 'Residential' ? C.slate : C.green,
+                          }}>
+                            {customer.type}
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '13px 16px', color: C.slate }}>
                       {q.sales_manager_id ? (managerById.get(q.sales_manager_id)?.name ?? q.sales_manager_id) : <span style={{ fontStyle: 'italic' }}>—</span>}
                     </td>
-                    <td style={{ padding: '13px 16px', color: C.slate }}>{q.line_items.length} item(s)</td>
                     <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>
                       {formatRM(calcQuoteTotal(q.line_items, q.discount))}
                     </td>
@@ -170,6 +281,30 @@ export function SalesScreen() {
                         current={q.status}
                         onChange={(newStatus) => setPendingChange({ quote: q, newStatus })}
                       />
+                    </td>
+                    <td style={{ padding: '13px 16px', color: C.slate }}>
+                      {q.status === 'Sent'
+                        ? formatIdleDays(q.last_followup_date ?? q.valid_from)
+                        : <span style={{ fontStyle: 'italic' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => updateMut.mutate({ id: q.id, patch: { last_followup_date: todayISO() } })}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${q.last_followup_date ? C.border : C.green}`,
+                          background: q.last_followup_date ? 'transparent' : C.honeydew,
+                          color: q.last_followup_date ? C.slate : C.green,
+                          fontFamily: 'Figtree',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {q.last_followup_date ?? 'Log follow-up'}
+                      </button>
                     </td>
                     <td style={{ padding: '13px 16px', color: C.slate }}>{q.valid_to}</td>
                   </tr>
@@ -180,67 +315,135 @@ export function SalesScreen() {
           {filtered.length === 0 && (
             <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No quotes found.</div>
           )}
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            from={pagination.from}
+            to={pagination.to}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 
       {tab === 'pipeline' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {QUOTE_STATUSES.map((status) => {
-            const items = quotes.filter((q) => q.status === status);
+            const items = filtered.filter((q) => q.status === status);
             const colTotal = items.reduce((s, q) => s + calcQuoteTotal(q.line_items, q.discount), 0);
+            const isOver = dragOverStatus === status;
             return (
               <div
                 key={status}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverStatus(status); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverStatus(null); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverStatus(null);
+                  const quoteId = e.dataTransfer.getData('quoteId');
+                  const quote = quotes.find((q) => q.id === quoteId);
+                  if (quote && quote.status !== status) setPendingChange({ quote, newStatus: status });
+                }}
                 style={{
-                  background: C.white,
+                  background: isOver ? C.honeydew : C.white,
                   borderRadius: 16,
                   padding: 14,
-                  border: `1px solid ${C.border}`,
+                  border: `2px solid ${isOver ? C.green : C.border}`,
                   minHeight: 200,
+                  transition: 'background 100ms, border-color 100ms',
                 }}
               >
                 <div style={{ fontSize: 12, fontWeight: 700, color: C.green, marginBottom: 4 }}>{status}</div>
                 <div style={{ fontSize: 11, color: C.slate, marginBottom: 10 }}>
                   {items.length} · {formatRMShort(colTotal)}
                 </div>
-                {items.map((q) => {
-                  const customer = customerById.get(q.customer_id);
-                  return (
-                    <div
-                      key={q.id}
-                      onClick={() => setModal(q)}
-                      style={{
-                        background: C.seasalt,
-                        borderRadius: 8,
-                        padding: 10,
-                        marginBottom: 8,
-                        cursor: 'pointer',
-                        border: `1px solid ${C.divider}`,
-                      }}
-                    >
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{q.id}</div>
-                      <div style={{ fontSize: 12, marginTop: 2 }}>{customer?.name ?? q.customer_id}</div>
-                      <div style={{ fontSize: 11, color: C.slate, marginTop: 2 }}>
-                        {q.sales_manager_id ? managerById.get(q.sales_manager_id)?.name : null}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.slate, marginTop: 4 }}>
-                        {formatRM(calcQuoteTotal(q.line_items, q.discount))}
-                      </div>
-                    </div>
-                  );
-                })}
+                {items.slice(0, 3).map((q) => (
+                  <PipelineCard
+                    key={q.id}
+                    quote={q}
+                    customer={customerById.get(q.customer_id)}
+                    manager={q.sales_manager_id ? managerById.get(q.sales_manager_id) : undefined}
+                    onDragStart={() => {}}
+                    onDragEnd={() => setDragOverStatus(null)}
+                    onClick={() => setModal(q)}
+                  />
+                ))}
+                {items.length > 3 && (
+                  <button
+                    onClick={() => setOverflowStatus(status)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 0',
+                      borderRadius: 8,
+                      border: `1px dashed ${C.border}`,
+                      background: 'transparent',
+                      color: C.slate,
+                      fontFamily: 'Figtree',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +{items.length - 3} more
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
+      {overflowStatus && (() => {
+        const allItems = filtered.filter((q) => q.status === overflowStatus);
+        return (
+          <Modal
+            title={overflowStatus}
+            subtitle={`${allItems.length} quotes`}
+            onClose={() => setOverflowStatus(null)}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, maxHeight: 480, overflowY: 'auto' }}>
+              {allItems.map((q) => {
+                const customer = customerById.get(q.customer_id);
+                const manager = q.sales_manager_id ? managerById.get(q.sales_manager_id) : undefined;
+                return (
+                  <div
+                    key={q.id}
+                    onClick={() => { setOverflowStatus(null); setModal(q); }}
+                    style={{
+                      background: C.seasalt,
+                      borderRadius: 10,
+                      padding: 12,
+                      cursor: 'pointer',
+                      border: `1px solid ${C.divider}`,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = C.hoverRow)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = C.seasalt)}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{q.id}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{customer?.name ?? q.customer_id}</div>
+                    {manager && <div style={{ fontSize: 11, color: C.slate, marginTop: 2 }}>{manager.name}</div>}
+                    <div style={{ fontSize: 12, color: C.green, fontWeight: 700, marginTop: 6 }}>
+                      {formatRM(calcQuoteTotal(q.line_items, q.discount))}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.slate, marginTop: 2 }}>Expires {q.valid_to}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Modal>
+        );
+      })()}
+
       {modal && (
         <QuoteModal
-          quote={modal === 'new' ? null : modal}
+          quote={modal === 'new' ? null : modalQuote}
           onClose={() => setModal(null)}
           onSave={handleSave}
-          onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
+          isSaving={createMut.isPending || updateMut.isPending}
+          onDelete={(id, poAttachments, proposalAttachments) =>
+            deleteMut.mutate({ id, poAttachments, proposalAttachments }, { onSuccess: () => setModal(null) })
+          }
         />
       )}
 
@@ -327,6 +530,17 @@ export function SalesScreen() {
   );
 }
 
+function formatIdleDays(sinceISO: string): React.ReactNode {
+  const days = Math.floor((Date.now() - new Date(sinceISO).getTime()) / 86_400_000);
+  if (days <= 0) return 'Today';
+  const isStale = days > 7;
+  return (
+    <span style={{ color: isStale ? '#C0321A' : C.slate, fontWeight: isStale ? 700 : 500 }}>
+      {days} {days === 1 ? 'day' : 'days'}
+    </span>
+  );
+}
+
 function StatusSelect({ current, onChange }: { current: Quote['status']; onChange: (s: Quote['status']) => void }) {
   const palette = STATUS_COLORS[current] ?? { bg: C.divider, color: C.slate };
   return (
@@ -368,5 +582,51 @@ function StatusPill({ status }: { status: string }) {
     <span style={{ display: 'inline-block', background: palette.bg, color: palette.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
       {status}
     </span>
+  );
+}
+
+function PipelineCard({
+  quote,
+  customer,
+  manager,
+  onDragEnd,
+  onClick,
+}: {
+  quote: Quote;
+  customer: { name: string } | undefined;
+  manager: { name: string } | undefined;
+  onDragEnd: () => void;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('quoteId', quote.id);
+        e.dataTransfer.effectAllowed = 'move';
+        (e.currentTarget as HTMLElement).style.opacity = '0.45';
+      }}
+      onDragEnd={(e) => {
+        (e.currentTarget as HTMLElement).style.opacity = '1';
+        onDragEnd();
+      }}
+      onClick={onClick}
+      style={{
+        background: C.seasalt,
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 8,
+        cursor: 'grab',
+        border: `1px solid ${C.divider}`,
+        userSelect: 'none',
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{quote.id}</div>
+      <div style={{ fontSize: 12, marginTop: 2 }}>{customer?.name ?? quote.customer_id}</div>
+      {manager && <div style={{ fontSize: 11, color: C.slate, marginTop: 2 }}>{manager.name}</div>}
+      <div style={{ fontSize: 11, color: C.slate, marginTop: 4 }}>
+        {formatRM(calcQuoteTotal(quote.line_items, quote.discount))}
+      </div>
+    </div>
   );
 }

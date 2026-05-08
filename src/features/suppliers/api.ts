@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { Supplier, SupplierInsert, SupplierUpdate, SupplierWithStats } from './types';
+import type { Supplier, SupplierInsert, SupplierUpdate, SupplierWithStats, SupplierKind } from './types';
 
 export async function listSuppliers(): Promise<Supplier[]> {
   const { data, error } = await supabase.from('suppliers').select('*').order('name');
@@ -37,5 +37,29 @@ export async function updateSupplier(id: string, patch: SupplierUpdate): Promise
 
 export async function deleteSupplier(id: string): Promise<void> {
   const { error } = await supabase.from('suppliers').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function listSupplierCategories(kind: SupplierKind): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('supplier_categories')
+    .select('name')
+    .eq('kind', kind)
+    .order('name');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function createSupplierCategory(kind: SupplierKind, name: string): Promise<void> {
+  const { error } = await supabase.from('supplier_categories').insert({ name, kind });
+  if (error) throw error;
+}
+
+export async function deleteSupplierCategory(kind: SupplierKind, name: string): Promise<void> {
+  const { error } = await supabase
+    .from('supplier_categories')
+    .delete()
+    .eq('name', name)
+    .eq('kind', kind);
   if (error) throw error;
 }

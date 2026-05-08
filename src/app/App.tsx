@@ -2,14 +2,35 @@ import { useState } from 'react';
 import { C } from '@/shared/tokens';
 import { VoltaraLogo } from '@/shared/components/VoltaraLogo';
 import { NavItem } from '@/shared/components/NavItem';
-import { NAV, SCREEN_TITLES, type ScreenId } from './nav';
+import { NAV_SECTIONS, SCREEN_TITLES, type ScreenId } from './nav';
 import { ROUTES } from './routes';
 import { useUnacknowledgedAlertsCount } from '@/features/seo';
+
+const COLLAPSED_KEY = 'voltara.nav.collapsed';
 
 export function App() {
   const [screen, setScreen] = useState<ScreenId>('overview');
   const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const seoAlertsCount = useUnacknowledgedAlertsCount();
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(COLLAPSED_KEY);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleSection = (label: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.seasalt }}>
@@ -30,28 +51,56 @@ export function App() {
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 12 }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: C.slate,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              padding: '10px 16px 4px',
-            }}
-          >
-            Main
-          </div>
-          {NAV.map((n) => (
-            <NavItem
-              key={n.id}
-              icon={n.icon}
-              label={n.label}
-              active={screen === n.id}
-              badge={n.id === 'seo' ? seoAlertsCount : undefined}
-              onClick={() => setScreen(n.id)}
-            />
-          ))}
+          {NAV_SECTIONS.map((section, i) => {
+            const isCollapsed = section.label ? collapsed.has(section.label) : false;
+            return (
+              <div key={section.label ?? `top-${i}`} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {section.label && (
+                  <button
+                    onClick={() => toggleSection(section.label!)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontFamily: 'Figtree',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: C.slate,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      padding: i === 0 ? '10px 16px 4px' : '14px 16px 4px',
+                    }}
+                  >
+                    <span>{section.label}</span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                        transition: 'transform 120ms',
+                        display: 'inline-block',
+                      }}
+                    >
+                      ▾
+                    </span>
+                  </button>
+                )}
+                {!isCollapsed && section.items.map((n) => (
+                  <NavItem
+                    key={n.id}
+                    icon={n.icon}
+                    label={n.label}
+                    active={screen === n.id}
+                    badge={n.id === 'seo' ? seoAlertsCount : undefined}
+                    onClick={() => setScreen(n.id)}
+                  />
+                ))}
+              </div>
+            );
+          })}
         </nav>
 
         <div style={{ borderTop: `1px solid ${C.divider}`, padding: '14px 8px', display: 'flex', alignItems: 'center', gap: 10 }}>

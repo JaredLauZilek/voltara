@@ -1,4 +1,4 @@
-import { C } from '@/shared/tokens';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { useProducts } from './hooks';
 
 interface Props {
@@ -14,40 +14,19 @@ interface Props {
  */
 export function ProductPicker({ value, onChange, placeholder = 'Select product or service…' }: Props) {
   const { data: products = [], isLoading } = useProducts();
-  const physical = products.filter((p) => !p.is_service);
-  const services = products.filter((p) => p.is_service);
-
+  const options = products.map((p) => ({
+    value: p.id,
+    label: p.name,
+    group: p.is_service ? 'Services' : 'Products',
+  }));
   return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
+    <SearchableSelect
+      options={options}
+      value={value}
+      onChange={(id) => { if (id) onChange(id); }}
+      placeholder={isLoading ? 'Loading…' : placeholder}
       disabled={isLoading}
-      style={{
-        padding: '7px 10px',
-        borderRadius: 8,
-        border: `1px solid ${C.border}`,
-        fontFamily: 'Figtree',
-        fontSize: 12,
-        outline: 'none',
-        background: C.white,
-        width: '100%',
-      }}
-    >
-      <option value="" disabled>{placeholder}</option>
-      {physical.length > 0 && (
-        <optgroup label="Products">
-          {physical.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </optgroup>
-      )}
-      {services.length > 0 && (
-        <optgroup label="Services">
-          {services.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </optgroup>
-      )}
-    </select>
+      style={{ fontSize: 12, padding: '7px 32px 7px 10px', borderRadius: 8 }}
+    />
   );
 }

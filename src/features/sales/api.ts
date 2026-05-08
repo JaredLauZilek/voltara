@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
+import type { Attachment } from '@/shared/types';
 import type { Quote, QuoteInsert, QuoteUpdate } from './types';
 
 export async function listQuotes(): Promise<Quote[]> {
@@ -19,7 +20,13 @@ export async function updateQuote(id: string, patch: QuoteUpdate): Promise<Quote
   return data;
 }
 
-export async function deleteQuote(id: string): Promise<void> {
+export async function deleteQuote(
+  id: string,
+  poAttachments: Attachment[],
+  proposalAttachments: Attachment[],
+): Promise<void> {
+  const paths = [...poAttachments, ...proposalAttachments].map((a) => a.storage_path);
+  if (paths.length > 0) await supabase.storage.from('attachments').remove(paths);
   const { error } = await supabase.from('quotes').delete().eq('id', id);
   if (error) throw error;
 }

@@ -1,44 +1,42 @@
-import { C } from '@/shared/tokens';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { useSuppliers } from './hooks';
+import type { SupplierKind } from './types';
 
 interface Props {
   value: string | null;
   onChange: (id: string) => void;
   placeholder?: string;
   filterStatus?: 'Active' | 'Inactive' | 'Prospect';
+  // Restrict the dropdown to specific kinds. Defaults to Supplier-only since this picker
+  // is used for purchase orders, which can't be tied to vendors or contractors.
+  filterKinds?: SupplierKind[];
 }
 
 /**
  * Canonical supplier dropdown — used by Inventory & PO (outgoing) modals.
  * Single source of truth so creating a supplier here makes them available everywhere.
  */
-export function SupplierPicker({ value, onChange, placeholder = 'Select supplier…', filterStatus }: Props) {
+export function SupplierPicker({
+  value,
+  onChange,
+  placeholder = 'Select supplier…',
+  filterStatus,
+  filterKinds = ['Supplier'],
+}: Props) {
   const { data: suppliers = [], isLoading } = useSuppliers();
-  const visible = filterStatus ? suppliers.filter((s) => s.status === filterStatus) : suppliers;
+  const visible = suppliers.filter((s) => {
+    if (filterStatus && s.status !== filterStatus) return false;
+    if (!filterKinds.includes((s.kind ?? 'Supplier') as SupplierKind)) return false;
+    return true;
+  });
+  const options = visible.map((s) => ({ value: s.id, label: s.name, meta: s.category }));
   return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
+    <SearchableSelect
+      options={options}
+      value={value}
+      onChange={(id) => { if (id) onChange(id); }}
+      placeholder={isLoading ? 'Loading…' : placeholder}
       disabled={isLoading}
-      style={{
-        width: '100%',
-        padding: '8px 12px',
-        borderRadius: 8,
-        border: `1px solid ${C.border}`,
-        fontFamily: 'Figtree',
-        fontSize: 13,
-        outline: 'none',
-        background: C.white,
-      }}
-    >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {visible.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name} — {s.category}
-        </option>
-      ))}
-    </select>
+    />
   );
 }

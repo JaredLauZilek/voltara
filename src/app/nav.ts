@@ -8,12 +8,16 @@ export type ScreenId =
   | 'customers'
   | 'social'
   | 'sales'
+  | 'salesorders'
   | 'salesmanagers'
   | 'purchaseorders'
+  | 'bills'
+  | 'expenses'
   | 'products'
   | 'suppliers'
   | 'seo'
-  | 'formdesigns';
+  | 'formdesigns'
+  | 'supabasehealth';
 
 export interface NavEntry {
   id: ScreenId;
@@ -21,19 +25,63 @@ export interface NavEntry {
   label: string;
 }
 
-export const NAV: NavEntry[] = [
-  { id: 'overview',       icon: '⊞', label: 'Overview' },
-  { id: 'invoices',       icon: '◈', label: 'Invoices' },
-  { id: 'installations',  icon: '◎', label: 'Installations' },
-  { id: 'customers',      icon: '◉', label: 'Customers' },
-  { id: 'social',         icon: '◫', label: 'Social Media Planner' },
-  { id: 'sales',          icon: '◐', label: 'Sales' },
-  { id: 'salesmanagers',  icon: '◈', label: 'Sales Managers' },
-  { id: 'purchaseorders', icon: '◧', label: 'Purchase Orders' },
-  { id: 'products',       icon: '▦', label: 'Inventory & Products' },
-  { id: 'suppliers',      icon: '◑', label: 'Suppliers' },
-  { id: 'seo',            icon: '◇', label: 'SEO Monitor' },
-  { id: 'formdesigns',    icon: '◨', label: 'Form Designs' },
+export interface NavSection {
+  label: string | null; // null = no header (top-level entries)
+  items: NavEntry[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    label: null,
+    items: [
+      { id: 'overview', icon: '⊞', label: 'Overview' },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { id: 'installations', icon: '◎', label: 'Installations' },
+    ],
+  },
+  {
+    label: 'Accounting',
+    items: [
+      { id: 'purchaseorders', icon: '◧', label: 'Purchase Orders' },
+      { id: 'invoices',       icon: '◈', label: 'Invoices' },
+      { id: 'bills',          icon: '⊞', label: 'Bills (COGS)' },
+      { id: 'expenses',       icon: '⊟', label: 'Expenses' },
+    ],
+  },
+  {
+    label: 'Sales & CRM',
+    items: [
+      { id: 'customers',     icon: '◉', label: 'Customers' },
+      { id: 'sales',         icon: '◐', label: 'Sales' },
+      { id: 'salesorders',   icon: '◔', label: 'Sales Orders' },
+      { id: 'salesmanagers', icon: '◈', label: 'Sales Managers' },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { id: 'products',  icon: '▦', label: 'Inventory & Products' },
+      { id: 'suppliers', icon: '◑', label: 'Suppliers & Vendors' },
+    ],
+  },
+  {
+    label: 'Marketing',
+    items: [
+      { id: 'social', icon: '◫', label: 'Social Media Planner' },
+      { id: 'seo',    icon: '◇', label: 'SEO Monitor' },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { id: 'formdesigns',    icon: '◨', label: 'Form Designs' },
+      { id: 'supabasehealth', icon: '◈', label: 'System Health' },
+    ],
+  },
 ];
 
 export const SCREEN_TITLES: Record<ScreenId, string> = {
@@ -43,10 +91,14 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   customers:      'Customers',
   social:         'Social Media Planner',
   sales:          'Sales',
+  salesorders:    'Sales Orders',
   salesmanagers:  'Sales Managers',
   purchaseorders: 'Purchase Orders',
+  bills:          'Bills (COGS)',
+  expenses:       'Expenses',
   products:       'Inventory & Products',
-  suppliers:      'Suppliers',
+  suppliers:      'Suppliers & Vendors',
   seo:            'SEO Monitor',
   formdesigns:    'Form Designs',
+  supabasehealth: 'System Health',
 };

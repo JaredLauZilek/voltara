@@ -197,10 +197,12 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
         {/* Address */}
         <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Address</label>
-          <input
+          <textarea
             value={form.address ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value || null }))}
-            style={inputStyle}
+            rows={3}
+            placeholder="Press Enter for a new line"
+            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5, fontFamily: 'Figtree' }}
           />
         </div>
 

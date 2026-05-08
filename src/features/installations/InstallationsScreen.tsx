@@ -1,22 +1,45 @@
+import { useState } from 'react';
 import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Badge } from '@/shared/components/Badge';
+import { Toolbar } from '@/shared/components/Toolbar';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
-import { useInstallations } from './hooks';
+import { useQuotes } from '@/features/sales';
+import {
+  useInstallations,
+  useCreateInstallation,
+  useUpdateInstallation,
+  useDeleteInstallation,
+} from './hooks';
+import { InstallationModal } from './InstallationModal';
+import { INSTALLATION_STATUSES } from './types';
+import type { Installation, InstallationInsert } from './types';
+
+type StatusFilter = 'All' | (typeof INSTALLATION_STATUSES)[number];
 
 export function InstallationsScreen() {
   const { data: installations = [] } = useInstallations();
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
+  const { data: quotes = [] } = useQuotes();
+  const createMut = useCreateInstallation();
+  const updateMut = useUpdateInstallation();
+  const deleteMut = useDeleteInstallation();
+
   const customerById = new Map(customers.map((c) => [c.id, c]));
   const productById = new Map(products.map((p) => [p.id, p]));
+  const quoteById = new Map(quotes.map((q) => [q.id, q]));
+
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('All');
+  const [search, setSearch] = useState('');
+  const [modal, setModal] = useState<Installation | 'new' | null>(null);
 
   const completed = installations.filter((i) => i.status === 'Completed').length;
   const overdue = installations.filter((i) => i.status === 'Overdue').length;
   const inProgress = installations.filter((i) => i.status === 'In Progress').length;
 
-  // Aggregate technician load from data
   const techLoad = new Map<string, number>();
   for (const i of installations) {
     if (i.status === 'Pending' || i.status === 'In Progress') {
@@ -24,6 +47,39 @@ export function InstallationsScreen() {
     }
   }
   const techRows = [...techLoad.entries()].map(([name, jobs]) => ({ name, jobs, max: 6 }));
+
+  const filtered = installations.filter((i) => {
+    if (filterStatus !== 'All' && i.status !== filterStatus) return false;
+    if (!search) return true;
+    const customer = customerById.get(i.customer_id);
+    return `${i.id} ${customer?.name ?? ''} ${i.tech}`.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const pagination = usePagination(filtered);
+
+  const handleSave = (row: InstallationInsert) => {
+    if (modal === 'new') {
+      createMut.mutate(row, { onSuccess: () => setModal(null) });
+    } else if (modal && typeof modal !== 'string') {
+      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+    }
+  };
+
+  const productLabel = (i: Installation): string => {
+    if (i.quote_id) {
+      const q = quoteById.get(i.quote_id);
+      const first = q?.line_items[0];
+      const firstProduct = first ? productById.get(first.product_id) : null;
+      const firstName = firstProduct?.name.split('+')[0].trim() ?? first?.product_id ?? '—';
+      const more = (q?.line_items.length ?? 0) > 1 ? ` +${(q!.line_items.length - 1)}` : '';
+      return `${firstName}${more}`;
+    }
+    if (i.product_id) {
+      const p = productById.get(i.product_id);
+      return p?.name.split('+')[0].trim() ?? i.product_id;
+    }
+    return '—';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -34,6 +90,17 @@ export function InstallationsScreen() {
         <KPICard label="Overdue" value={overdue} sub="Requires rescheduling" />
       </div>
 
+      <Toolbar
+        filters={['All', ...INSTALLATION_STATUSES]}
+        filter={filterStatus}
+        onFilterChange={(f) => setFilterStatus(f as StatusFilter)}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search ref / customer / tech…"
+        primaryLabel="+ New Installation"
+        onPrimary={() => setModal('new')}
+      />
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16 }}>
         <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.divider}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -42,7 +109,7 @@ export function InstallationsScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.seasalt }}>
-                {['Ref', 'Customer', 'Technician', 'Date', 'Product', 'Status'].map((h) => (
+                {['Ref', 'Customer', 'Quote', 'Technician', 'Date', 'Product', 'Status'].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -61,18 +128,26 @@ export function InstallationsScreen() {
               </tr>
             </thead>
             <tbody>
-              {installations.map((r) => {
+              {pagination.pageItems.map((r) => {
                 const customer = customerById.get(r.customer_id);
-                const product = productById.get(r.product_id);
                 return (
-                  <tr key={r.id} style={{ borderBottom: `1px solid ${C.divider}` }}>
+                  <tr
+                    key={r.id}
+                    style={{ borderBottom: `1px solid ${C.divider}`, cursor: 'pointer' }}
+                    onClick={() => setModal(r)}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = C.hoverRow)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: C.green }}>{r.id}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 600 }}>{customer?.name ?? r.customer_id}</td>
+                    <td style={{ padding: '12px 16px', color: C.slate, fontSize: 12 }}>
+                      {r.quote_id ?? <span style={{ fontStyle: 'italic' }}>—</span>}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>{r.tech}</td>
                     <td style={{ padding: '12px 16px', color: C.slate }}>{r.scheduled}</td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ background: C.honeydew, color: C.green, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6 }}>
-                        {product?.name.split('+')[0].trim() ?? r.product_id}
+                        {productLabel(r)}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
@@ -83,9 +158,20 @@ export function InstallationsScreen() {
               })}
             </tbody>
           </table>
-          {installations.length === 0 && (
-            <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No installations scheduled.</div>
+          {filtered.length === 0 && (
+            <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>
+              {installations.length === 0 ? 'No installations scheduled.' : 'No installations match the filter.'}
+            </div>
           )}
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
+            from={pagination.from}
+            to={pagination.to}
+            onPageChange={pagination.setPage}
+          />
         </div>
 
         <div style={{ background: C.white, borderRadius: 16, padding: 20, border: `1px solid ${C.border}` }}>
@@ -115,6 +201,15 @@ export function InstallationsScreen() {
           ))}
         </div>
       </div>
+
+      {modal && (
+        <InstallationModal
+          installation={modal === 'new' ? null : modal}
+          onClose={() => setModal(null)}
+          onSave={handleSave}
+          onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
+        />
+      )}
     </div>
   );
 }

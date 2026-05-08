@@ -27,11 +27,17 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['customers']['Row'], 'created_at'> & { created_at?: string };
         Update: Partial<Database['public']['Tables']['customers']['Insert']>;
       };
+      supplier_categories: {
+        Row: { name: string; kind: 'Supplier' | 'Vendor' | 'Contractor'; created_at: string };
+        Insert: { name: string; kind: 'Supplier' | 'Vendor' | 'Contractor'; created_at?: string };
+        Update: Partial<{ name: string; kind: 'Supplier' | 'Vendor' | 'Contractor'; created_at: string }>;
+      };
       suppliers: {
         Row: {
           id: string;
           name: string;
           category: string;
+          kind: 'Supplier' | 'Vendor' | 'Contractor';
           status: 'Active' | 'Inactive' | 'Prospect';
           contact: string | null;
           email: string | null;
@@ -44,7 +50,7 @@ export interface Database {
           notes: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['suppliers']['Row'], 'created_at'> & { created_at?: string };
+        Insert: Omit<Database['public']['Tables']['suppliers']['Row'], 'created_at' | 'kind'> & { created_at?: string; kind?: 'Supplier' | 'Vendor' | 'Contractor' };
         Update: Partial<Database['public']['Tables']['suppliers']['Insert']>;
       };
       products: {
@@ -81,18 +87,25 @@ export interface Database {
         Row: {
           id: string;
           customer_id: string;
-          product_id: string;
+          product_id: string | null;
+          quote_id: string | null;
           tech: string;
           scheduled: string;
-          status: string;
+          status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue' | 'Cancelled';
+          notes: string | null;
         };
-        Insert: Database['public']['Tables']['installations']['Row'];
-        Update: Partial<Database['public']['Tables']['installations']['Row']>;
+        Insert: Omit<Database['public']['Tables']['installations']['Row'], 'product_id' | 'quote_id' | 'notes'> & {
+          product_id?: string | null;
+          quote_id?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['installations']['Insert']>;
       };
       invoices: {
         Row: {
           id: string;
           customer_id: string;
+          quote_id: string | null;
           line_items: LineItem[];
           discount: number;
           tax: number;
@@ -119,9 +132,14 @@ export interface Database {
           valid_from: string;
           valid_to: string;
           stock_deducted: boolean;
+          won_at: string | null;
+          last_followup_date: string | null;
+          customer_po_attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          proposal_attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          remarks: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['quotes']['Row'], 'created_at' | 'stock_deducted'> & { created_at?: string; stock_deducted?: boolean };
+        Insert: Omit<Database['public']['Tables']['quotes']['Row'], 'created_at' | 'stock_deducted' | 'won_at' | 'last_followup_date' | 'customer_po_attachments' | 'proposal_attachments' | 'remarks'> & { created_at?: string; stock_deducted?: boolean; won_at?: string | null; last_followup_date?: string | null; customer_po_attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[]; proposal_attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[]; remarks?: string | null };
         Update: Partial<Database['public']['Tables']['quotes']['Insert']>;
       };
       sales_managers: {
@@ -132,9 +150,10 @@ export interface Database {
           phone: string | null;
           target_revenue: number;
           active: boolean;
+          photo_data_url: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['sales_managers']['Row'], 'created_at' | 'active'> & { created_at?: string; active?: boolean };
+        Insert: Omit<Database['public']['Tables']['sales_managers']['Row'], 'created_at' | 'active' | 'photo_data_url'> & { created_at?: string; active?: boolean; photo_data_url?: string | null };
         Update: Partial<Database['public']['Tables']['sales_managers']['Insert']>;
       };
       purchase_orders: {
@@ -148,12 +167,54 @@ export interface Database {
           notes: string | null;
           external_ref: string | null;
           status: 'Draft' | 'Submitted' | 'Approved' | 'Received' | 'Partial' | 'Cancelled';
+          currency: 'RM' | 'CNY' | 'SGD' | 'USD';
           created_date: string;
           delivery_date: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['purchase_orders']['Row'], 'created_at'> & { created_at?: string };
+        Insert: Omit<Database['public']['Tables']['purchase_orders']['Row'], 'created_at' | 'currency'> & { created_at?: string; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
         Update: Partial<Database['public']['Tables']['purchase_orders']['Insert']>;
+      };
+      expenses: {
+        Row: {
+          id: string;
+          expense_date: string;
+          category:
+            | 'Rent' | 'Utilities' | 'Salary' | 'Reimbursement' | 'Subscription'
+            | 'Office' | 'Travel' | 'Marketing' | 'Insurance' | 'Tax' | 'Maintenance' | 'Other';
+          payee: string;
+          payee_email: string | null;
+          supplier_id: string | null;
+          entity: string | null;
+          amount: number;
+          payment_method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Cheque' | 'Other' | null;
+          reference: string | null;
+          recurrence: 'None' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
+          status: 'Pending' | 'Paid' | 'Cancelled';
+          paid_on: string | null;
+          attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          periods: {
+            period: string;
+            status: 'Pending' | 'Paid' | 'Cancelled';
+            paid_on: string | null;
+            attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          }[];
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['expenses']['Row'], 'created_at' | 'attachments' | 'recurrence' | 'status' | 'periods'> & {
+          created_at?: string;
+          attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          recurrence?: 'None' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
+          status?: 'Pending' | 'Paid' | 'Cancelled';
+          periods?: {
+            period: string;
+            status: 'Pending' | 'Paid' | 'Cancelled';
+            paid_on: string | null;
+            attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          }[];
+        };
+        Update: Partial<Database['public']['Tables']['expenses']['Insert']>;
       };
       posts: {
         Row: {
@@ -346,6 +407,30 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['form_designs']['Insert']>;
+      };
+      bills: {
+        Row: {
+          id: string;
+          bill_date: string;
+          due_date: string | null;
+          category: 'Materials' | 'Installation' | 'Labour' | 'Equipment' | 'Transport' | 'Subcontractor' | 'Professional Fees' | 'Utilities' | 'Maintenance' | 'Other';
+          vendor: string;
+          vendor_email: string | null;
+          supplier_id: string | null;
+          quote_id: string | null;
+          amount: number;
+          tax: number;
+          payment_method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Cheque' | 'Other' | null;
+          reference: string | null;
+          status: 'Unpaid' | 'Paid' | 'Overdue' | 'Disputed';
+          paid_on: string | null;
+          attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          notes: string | null;
+          currency: 'RM' | 'CNY' | 'SGD' | 'USD';
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['bills']['Row'], 'created_at' | 'tax' | 'status' | 'currency'> & { created_at?: string; tax?: number; status?: 'Unpaid' | 'Paid' | 'Overdue' | 'Disputed'; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
+        Update: Partial<Database['public']['Tables']['bills']['Insert']>;
       };
     };
     Views: {

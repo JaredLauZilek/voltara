@@ -19,12 +19,13 @@ export const DOC_TYPES: { id: DocType; label: string }[] = [
 export const FONT_FAMILIES: CompanyProfile['font_family'][] = ['Figtree', 'Helvetica', 'Times', 'Courier'];
 export const PAPER_SIZES: CompanyProfile['paper_size'][] = ['A4', 'Letter'];
 
-export const COLUMN_LABELS: Record<keyof ColumnVisibility, string> = {
+// Tax column is intentionally excluded — invoices have a global tax toggle
+// in InvoiceModal, and quotes/POs don't render tax at the line-item level.
+export const COLUMN_LABELS: Partial<Record<keyof ColumnVisibility, string>> = {
   sku: 'SKU',
   description: 'Description',
   qty: 'Qty',
   unit_price: 'Unit Price',
-  tax: 'Tax',
   line_total: 'Line Total',
 };
 

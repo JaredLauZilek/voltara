@@ -3,6 +3,7 @@ import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Badge } from '@/shared/components/Badge';
 import { Toolbar } from '@/shared/components/Toolbar';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { formatRM, formatRMShort } from '@/shared/lib/format';
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from './hooks';
 import { ProductModal } from './ProductModal';
@@ -47,6 +48,9 @@ export function ProductsScreen() {
   const filteredServices = serviceProducts.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase())
   );
+
+  const productsPagination = usePagination(filteredProducts);
+  const servicesPagination = usePagination(filteredServices);
 
   const totalSkus = physicalProducts.length;
   const stockValue = physicalProducts.reduce((s, p) => s + p.cost * (p.qty ?? 0), 0);
@@ -132,7 +136,7 @@ export function ProductsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((p) => {
+              {productsPagination.pageItems.map((p) => {
                 const stockPct = p.reorder_level > 0
                   ? Math.min(100, ((p.qty ?? 0) / (p.reorder_level * 2)) * 100)
                   : 100;
@@ -169,6 +173,15 @@ export function ProductsScreen() {
           {filteredProducts.length === 0 && (
             <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No products found.</div>
           )}
+          <Pagination
+            page={productsPagination.page}
+            totalPages={productsPagination.totalPages}
+            totalItems={productsPagination.totalItems}
+            pageSize={productsPagination.pageSize}
+            from={productsPagination.from}
+            to={productsPagination.to}
+            onPageChange={productsPagination.setPage}
+          />
         </div>
       )}
 
@@ -183,7 +196,7 @@ export function ProductsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredServices.map((p) => (
+              {servicesPagination.pageItems.map((p) => (
                 <tr
                   key={p.id}
                   style={{ borderBottom: `1px solid ${C.divider}`, cursor: 'pointer' }}
@@ -214,6 +227,15 @@ export function ProductsScreen() {
               No services yet. Click <strong>+ New Service</strong> to add one.
             </div>
           )}
+          <Pagination
+            page={servicesPagination.page}
+            totalPages={servicesPagination.totalPages}
+            totalItems={servicesPagination.totalItems}
+            pageSize={servicesPagination.pageSize}
+            from={servicesPagination.from}
+            to={servicesPagination.to}
+            onPageChange={servicesPagination.setPage}
+          />
         </div>
       )}
 

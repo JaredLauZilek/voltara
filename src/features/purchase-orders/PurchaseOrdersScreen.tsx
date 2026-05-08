@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { C } from '@/shared/tokens';
+import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
-import { Badge } from '@/shared/components/Badge';
 import { Toolbar } from '@/shared/components/Toolbar';
-import { formatRM, formatRMShort } from '@/shared/lib/format';
-import { useCustomers } from '@/features/customers';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
+import { formatRMShort } from '@/shared/lib/format';
 import { useSuppliers } from '@/features/suppliers';
 import { usePurchaseOrders, useCreatePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from './hooks';
 import { POModal } from './POModal';
@@ -12,53 +11,52 @@ import { PO_STATUSES, calcPOTotal } from './types';
 import type { PurchaseOrder, PurchaseOrderInsert } from './types';
 
 export function PurchaseOrdersScreen() {
-  const { data: pos = [] } = usePurchaseOrders();
-  const { data: customers = [] } = useCustomers();
+  const { data: allPos = [] } = usePurchaseOrders();
   const { data: suppliers = [] } = useSuppliers();
   const createMut = useCreatePurchaseOrder();
   const updateMut = useUpdatePurchaseOrder();
   const deleteMut = useDeletePurchaseOrder();
-  const customerById = new Map(customers.map((c) => [c.id, c]));
   const supplierById = new Map(suppliers.map((s) => [s.id, s]));
 
-  const [direction, setDirection] = useState<'outgoing' | 'incoming'>('outgoing');
+  // Only show outgoing POs (to suppliers); incoming are tracked in the Sales tab.
+  const pos = allPos.filter((p) => p.direction === 'outgoing');
+
   const [filterStatus, setFilterStatus] = useState<'All' | PurchaseOrder['status']>('All');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<PurchaseOrder | 'new' | null>(null);
 
-  const directional = pos.filter((p) => p.direction === direction);
-  const filtered = directional.filter((p) => {
+  // Always resolve the modal's PO against the latest query data so that after
+  // a save (which invalidates the query) Print PDF renders fresh notes/totals.
+  const modalPo =
+    modal && modal !== 'new' ? (allPos.find((p) => p.id === modal.id) ?? modal) : null;
+
+  const filtered = pos.filter((p) => {
     if (filterStatus !== 'All' && p.status !== filterStatus) return false;
     if (!search) return true;
-    const partyName =
-      p.direction === 'outgoing'
-        ? supplierById.get(p.supplier_id ?? '')?.name ?? ''
-        : customerById.get(p.customer_id ?? '')?.name ?? '';
-    return `${p.id} ${partyName}`.toLowerCase().includes(search.toLowerCase());
+    const supplierName = supplierById.get(p.supplier_id ?? '')?.name ?? '';
+    return `${p.id} ${supplierName}`.toLowerCase().includes(search.toLowerCase());
   });
 
-  const outgoingValue = pos
-    .filter((p) => p.direction === 'outgoing')
-    .reduce((s, p) => s + calcPOTotal(p.line_items, p.discount), 0);
-  const incomingValue = pos
-    .filter((p) => p.direction === 'incoming')
-    .reduce((s, p) => s + calcPOTotal(p.line_items, p.discount), 0);
+  const totalValue = pos.reduce((s, p) => s + calcPOTotal(p.line_items, p.discount), 0);
+  const activeOrders = pos.filter((p) => ['Draft', 'Submitted', 'Approved'].includes(p.status)).length;
   const pendingDelivery = pos.filter((p) => p.status === 'Approved' || p.status === 'Submitted').length;
   const awaitingApproval = pos.filter((p) => p.status === 'Submitted').length;
 
-  const filteredTotal = filtered.reduce((s, p) => s + calcPOTotal(p.line_items, p.discount), 0);
+  const pagination = usePagination(filtered);
 
   const handleSave = (row: PurchaseOrderInsert) => {
     if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
     else if (modal && typeof modal !== 'string')
-      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+      // Keep the modal open after saving an existing PO so the user can
+      // immediately print the PDF if they want.
+      updateMut.mutate({ id: modal.id, patch: row });
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Outgoing Value" value={formatRMShort(outgoingValue)} sub="To suppliers" accent />
-        <KPICard label="Incoming Value" value={formatRMShort(incomingValue)} sub="From customers" />
+        <KPICard label="Total PO Value" value={formatRMShort(totalValue)} sub="To suppliers" accent />
+        <KPICard label="Active Orders" value={activeOrders} sub="Draft + submitted + approved" />
         <KPICard label="Pending Delivery" value={pendingDelivery} sub="Submitted + approved" />
         <KPICard label="Awaiting Approval" value={awaitingApproval} sub="Submitted" />
       </div>
@@ -69,46 +67,16 @@ export function PurchaseOrdersScreen() {
         onFilterChange={(f) => setFilterStatus(f as typeof filterStatus)}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search PO ref / party…"
+        searchPlaceholder="Search PO ref / supplier…"
         primaryLabel="+ New PO"
         onPrimary={() => setModal('new')}
-        extra={
-          <div style={{ display: 'flex', gap: 4, background: C.divider, borderRadius: 99, padding: 3 }}>
-            {(['outgoing', 'incoming'] as const).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDirection(d)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 99,
-                  border: 'none',
-                  background: direction === d ? C.white : 'transparent',
-                  color: direction === d ? C.green : C.slate,
-                  fontFamily: 'Figtree',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                {d === 'outgoing' ? '↑ Outgoing' : '↓ Incoming'}
-              </button>
-            ))}
-          </div>
-        }
       />
-
-      <div style={{ background: C.honeydew, borderRadius: 12, padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.green }}>
-          {direction === 'outgoing' ? 'Orders to suppliers' : 'Orders from customers'} — {filtered.length} shown
-        </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{formatRM(filteredTotal)}</span>
-      </div>
 
       <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: C.seasalt }}>
-              {['PO Ref', direction === 'outgoing' ? 'Supplier' : 'Customer', 'Items', 'Total', 'Created', 'Delivery', 'Ext Ref', 'Status'].map((h) => (
+              {['PO Ref', 'Supplier', 'Total', 'Created', 'Status'].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -128,11 +96,8 @@ export function PurchaseOrdersScreen() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
-              const partyName =
-                p.direction === 'outgoing'
-                  ? supplierById.get(p.supplier_id ?? '')?.name ?? p.supplier_id
-                  : customerById.get(p.customer_id ?? '')?.name ?? p.customer_id;
+            {pagination.pageItems.map((p) => {
+              const supplierName = supplierById.get(p.supplier_id ?? '')?.name ?? p.supplier_id ?? '—';
               return (
                 <tr
                   key={p.id}
@@ -142,16 +107,18 @@ export function PurchaseOrdersScreen() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{p.id}</td>
-                  <td style={{ padding: '13px 16px', fontWeight: 600 }}>{partyName ?? '—'}</td>
-                  <td style={{ padding: '13px 16px', color: C.slate }}>{p.line_items.length} item(s)</td>
+                  <td style={{ padding: '13px 16px', fontWeight: 600 }}>{supplierName}</td>
                   <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>
-                    {formatRM(calcPOTotal(p.line_items, p.discount))}
+                    {(p.currency ?? 'RM')} {calcPOTotal(p.line_items, p.discount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{p.created_date}</td>
-                  <td style={{ padding: '13px 16px', color: C.slate }}>{p.delivery_date ?? '—'}</td>
-                  <td style={{ padding: '13px 16px', color: C.slate }}>{p.external_ref ?? '—'}</td>
-                  <td style={{ padding: '13px 16px' }}>
-                    <Badge status={p.status} />
+                  <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <POStatusSelect
+                      current={p.status}
+                      onChange={(next) =>
+                        updateMut.mutate({ id: p.id, patch: { status: next } })
+                      }
+                    />
                   </td>
                 </tr>
               );
@@ -161,16 +128,67 @@ export function PurchaseOrdersScreen() {
         {filtered.length === 0 && (
           <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No purchase orders found.</div>
         )}
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          pageSize={pagination.pageSize}
+          from={pagination.from}
+          to={pagination.to}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       {modal && (
         <POModal
-          po={modal === 'new' ? null : modal}
+          po={modal === 'new' ? null : modalPo}
+          isSaving={createMut.isPending || updateMut.isPending}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}
+    </div>
+  );
+}
+
+function POStatusSelect({
+  current,
+  onChange,
+}: {
+  current: PurchaseOrder['status'];
+  onChange: (next: PurchaseOrder['status']) => void;
+}) {
+  const palette = STATUS_COLORS[current] ?? { bg: C.divider, color: C.slate };
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <select
+        value={current}
+        onChange={(e) => {
+          const next = e.target.value as PurchaseOrder['status'];
+          if (next !== current) onChange(next);
+        }}
+        style={{
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          background: palette.bg,
+          color: palette.color,
+          border: 'none',
+          borderRadius: 99,
+          padding: '3px 26px 3px 10px',
+          fontSize: 11,
+          fontWeight: 700,
+          fontFamily: 'Figtree',
+          cursor: 'pointer',
+          letterSpacing: '0.03em',
+          outline: 'none',
+        }}
+      >
+        {PO_STATUSES.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
+      <span style={{ position: 'absolute', right: 9, pointerEvents: 'none', fontSize: 7, color: palette.color, lineHeight: 1 }}>▼</span>
     </div>
   );
 }

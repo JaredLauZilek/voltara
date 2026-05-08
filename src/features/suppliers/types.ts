@@ -10,9 +10,5 @@ export type SupplierWithStats = Supplier & {
 };
 
 export const SUPPLIER_STATUSES = ['Active', 'Inactive', 'Prospect'] as const;
-export const SUPPLIER_CATEGORIES = [
-  'Charger OEM',
-  'Electrical Equipment',
-  'Electrical Components',
-  'Internal',
-] as const;
+export const SUPPLIER_KINDS = ['Supplier', 'Vendor', 'Contractor'] as const;
+export type SupplierKind = (typeof SUPPLIER_KINDS)[number];

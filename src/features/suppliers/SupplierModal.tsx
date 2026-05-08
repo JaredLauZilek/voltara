@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
-import { SUPPLIER_STATUSES, SUPPLIER_CATEGORIES } from './types';
-import type { Supplier, SupplierInsert } from './types';
+import { SUPPLIER_STATUSES } from './types';
+import type { Supplier, SupplierInsert, SupplierKind } from './types';
+import { SupplierCategoryPicker } from './SupplierCategoryPicker';
 
 interface Props {
   supplier: Supplier | null;
+  defaultKind?: SupplierKind;
+  isSaving?: boolean;
+  saveError?: Error | null;
   onClose: () => void;
   onSave: (row: SupplierInsert) => void;
   onDelete?: (id: string) => void;
@@ -31,13 +35,15 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
+export function SupplierModal({ supplier, defaultKind, isSaving = false, saveError, onClose, onSave, onDelete }: Props) {
   const isNew = !supplier;
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<SupplierInsert>(
     supplier ?? {
       id: `SUP-${String(Date.now()).slice(-3)}`,
       name: '',
       category: 'Charger OEM',
+      kind: defaultKind ?? 'Supplier',
       status: 'Prospect',
       contact: null,
       email: null,
@@ -51,8 +57,10 @@ export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
     }
   );
 
+  const titleKind: SupplierKind = supplier?.kind ?? defaultKind ?? 'Supplier';
+
   return (
-    <Modal title={isNew ? 'New Supplier' : form.name} subtitle={!isNew ? form.id : undefined} onClose={onClose}>
+    <Modal title={isNew ? `New ${titleKind}` : form.name} subtitle={!isNew ? form.id : undefined} onClose={onClose}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Company Name</label>
@@ -60,13 +68,11 @@ export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
         </div>
         <div>
           <label style={labelStyle}>Category</label>
-          <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={inputStyle}>
-            {SUPPLIER_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <SupplierCategoryPicker
+            kind={titleKind}
+            value={form.category}
+            onChange={(name) => setForm((f) => ({ ...f, category: name }))}
+          />
         </div>
         <div>
           <label style={labelStyle}>Status</label>
@@ -116,10 +122,12 @@ export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
         </div>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Address</label>
-          <input
+          <textarea
             value={form.address ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value || null }))}
-            style={inputStyle}
+            rows={3}
+            placeholder="Multi-line address — newlines are preserved on printed POs."
+            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}
           />
         </div>
         <div>
@@ -165,24 +173,38 @@ export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
+      {saveError && (
+        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '8px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+          {saveError.message || 'Save failed.'}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         {!isNew && onDelete && (
-          <button
-            onClick={() => onDelete(supplier.id)}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: '1px solid #FDEAEA',
-              background: 'transparent',
-              color: '#C0321A',
-              fontFamily: 'Figtree',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Delete
-          </button>
+          confirmDelete ? (
+            <>
+              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <button
+                onClick={() => onDelete(supplier.id)}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Confirm Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.slate, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Delete
+            </button>
+          )
         )}
         <button
           onClick={onClose}
@@ -203,19 +225,20 @@ export function SupplierModal({ supplier, onClose, onSave, onDelete }: Props) {
         </button>
         <button
           onClick={() => onSave(form)}
+          disabled={isSaving}
           style={{
             padding: '10px 24px',
             borderRadius: 10,
             border: 'none',
-            background: C.green,
+            background: isSaving ? C.slate : C.green,
             color: C.white,
             fontFamily: 'Figtree',
             fontSize: 13,
             fontWeight: 700,
-            cursor: 'pointer',
+            cursor: isSaving ? 'wait' : 'pointer',
           }}
         >
-          {isNew ? 'Create' : 'Save Changes'}
+          {isSaving ? 'Saving…' : isNew ? 'Create' : 'Save Changes'}
         </button>
       </div>
     </Modal>

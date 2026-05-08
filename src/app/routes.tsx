@@ -6,12 +6,16 @@ import { InstallationsScreen } from '@/features/installations';
 import { CustomersScreen } from '@/features/customers';
 import { SocialScreen } from '@/features/social';
 import { SalesScreen } from '@/features/sales';
+import { SalesOrdersScreen } from '@/features/sales-orders';
 import { SalesManagersScreen } from '@/features/sales-managers';
 import { PurchaseOrdersScreen } from '@/features/purchase-orders';
+import { BillsScreen } from '@/features/bills';
+import { ExpensesScreen } from '@/features/expenses';
 import { ProductsScreen } from '@/features/products';
 import { SuppliersScreen } from '@/features/suppliers';
 import { SEOMonitorScreen } from '@/features/seo';
 import { FormDesignsScreen } from '@/features/form-designs';
+import { SupabaseHealthScreen } from '@/features/supabase-health';
 
 export const ROUTES: Record<ScreenId, ReactNode> = {
   overview:       <OverviewScreen />,
@@ -20,10 +24,14 @@ export const ROUTES: Record<ScreenId, ReactNode> = {
   customers:      <CustomersScreen />,
   social:         <SocialScreen />,
   sales:          <SalesScreen />,
+  salesorders:    <SalesOrdersScreen />,
   salesmanagers:  <SalesManagersScreen />,
   purchaseorders: <PurchaseOrdersScreen />,
+  bills:          <BillsScreen />,
+  expenses:       <ExpensesScreen />,
   products:       <ProductsScreen />,
   suppliers:      <SuppliersScreen />,
   seo:            <SEOMonitorScreen />,
   formdesigns:    <FormDesignsScreen />,
+  supabasehealth: <SupabaseHealthScreen />,
 };

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
-import type { SupplierInsert, SupplierUpdate } from './types';
+import type { SupplierInsert, SupplierUpdate, SupplierKind } from './types';
 
 export function useSuppliers() {
   return useQuery({ queryKey: ['suppliers'], queryFn: api.listSuppliers });
@@ -31,5 +31,28 @@ export function useDeleteSupplier() {
   return useMutation({
     mutationFn: (id: string) => api.deleteSupplier(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+  });
+}
+
+export function useSupplierCategories(kind: SupplierKind) {
+  return useQuery({
+    queryKey: ['supplier_categories', kind],
+    queryFn: () => api.listSupplierCategories(kind),
+  });
+}
+
+export function useCreateSupplierCategory(kind: SupplierKind) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.createSupplierCategory(kind, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['supplier_categories', kind] }),
+  });
+}
+
+export function useDeleteSupplierCategory(kind: SupplierKind) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.deleteSupplierCategory(kind, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['supplier_categories', kind] }),
   });
 }

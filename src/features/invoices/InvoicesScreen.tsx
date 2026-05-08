@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
+import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { formatRM, formatRMShort } from '@/shared/lib/format';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
@@ -30,6 +31,12 @@ export function InvoicesScreen() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<Invoice | 'new' | null>(null);
 
+  // Always resolve the modal's invoice against the latest query data so
+  // that after a save (which invalidates the query) the modal — and any
+  // child modals like the print preview — render fresh notes/totals/etc.
+  const modalInvoice =
+    modal && modal !== 'new' ? (invoices.find((inv) => inv.id === modal.id) ?? modal) : null;
+
   const customerById = new Map(customers.map((c) => [c.id, c]));
   const productById = new Map(products.map((p) => [p.id, p]));
 
@@ -40,6 +47,8 @@ export function InvoicesScreen() {
     const haystack = `${inv.id} ${customer?.name ?? ''}`.toLowerCase();
     return haystack.includes(search.toLowerCase());
   });
+
+  const pagination = usePagination(filtered);
 
   const totalCollected = invoices
     .filter((i) => i.status === 'Paid')
@@ -53,7 +62,9 @@ export function InvoicesScreen() {
   const handleSave = (row: InvoiceInsert) => {
     if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
     else if (modal && typeof modal !== 'string')
-      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+      // Keep the modal open after saving an existing invoice so the user can
+      // immediately print the PDF if they want.
+      updateMut.mutate({ id: modal.id, patch: row });
   };
 
   return (
@@ -100,7 +111,7 @@ export function InvoicesScreen() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((inv) => {
+            {pagination.pageItems.map((inv) => {
               const total = calcInvoiceTotals(inv.line_items, inv.discount, inv.tax).total;
               const customer = customerById.get(inv.customer_id);
               const itemSummary = inv.line_items
@@ -121,19 +132,14 @@ export function InvoicesScreen() {
                     {itemSummary || '—'}
                   </td>
                   <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{formatRM(total)}</td>
-                  <td style={{ padding: '13px 16px' }}>
-                    <span
-                      style={{
-                        background: sc.bg,
-                        color: sc.color,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '3px 10px',
-                        borderRadius: 99,
-                      }}
-                    >
-                      {inv.status}
-                    </span>
+                  <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <InvoiceStatusSelect
+                      current={inv.status}
+                      palette={sc}
+                      onChange={(next) =>
+                        updateMut.mutate({ id: inv.id, patch: { status: next } })
+                      }
+                    />
                   </td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{inv.issue_date}</td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{inv.due_date}</td>
@@ -145,16 +151,68 @@ export function InvoicesScreen() {
         {filtered.length === 0 && (
           <div style={{ padding: 32, textAlign: 'center', color: C.slate, fontSize: 14 }}>No invoices found.</div>
         )}
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          pageSize={pagination.pageSize}
+          from={pagination.from}
+          to={pagination.to}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       {modal && (
         <InvoiceModal
-          invoice={modal === 'new' ? null : modal}
+          invoice={modal === 'new' ? null : modalInvoice}
           onClose={() => setModal(null)}
           onSave={handleSave}
+          isSaving={createMut.isPending || updateMut.isPending}
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}
+    </div>
+  );
+}
+
+function InvoiceStatusSelect({
+  current,
+  palette,
+  onChange,
+}: {
+  current: Invoice['status'];
+  palette: { bg: string; color: string };
+  onChange: (next: Invoice['status']) => void;
+}) {
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <select
+        value={current}
+        onChange={(e) => {
+          const next = e.target.value as Invoice['status'];
+          if (next !== current) onChange(next);
+        }}
+        style={{
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          background: palette.bg,
+          color: palette.color,
+          border: 'none',
+          borderRadius: 99,
+          padding: '3px 26px 3px 10px',
+          fontSize: 11,
+          fontWeight: 700,
+          fontFamily: 'Figtree',
+          cursor: 'pointer',
+          letterSpacing: '0.03em',
+          outline: 'none',
+        }}
+      >
+        {INVOICE_STATUSES.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
+      <span style={{ position: 'absolute', right: 9, pointerEvents: 'none', fontSize: 7, color: palette.color, lineHeight: 1 }}>▼</span>
     </div>
   );
 }

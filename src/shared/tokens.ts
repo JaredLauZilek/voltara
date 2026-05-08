@@ -63,4 +63,6 @@ export const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   'Low Stock':  { bg: '#FFF8E1', color: '#B07D00' },
   'Out of Stock': { bg: '#FDEAEA', color: '#C0321A' },
   'Service':    { bg: '#E3F0FF', color: '#1A62C0' },
+  'Unpaid':     { bg: '#FFF8E1', color: '#B07D00' },
+  'Disputed':   { bg: '#FFF0E0', color: '#B45309' },
 };
