@@ -6,11 +6,12 @@ import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useQuotes } from '@/features/sales';
+import { useSuppliers } from '@/features/suppliers';
 import { useDesign } from '@/features/form-designs';
 import { todayISO } from '@/shared/lib/format';
 import { INSTALLATION_STATUSES } from './types';
 import type { Installation, InstallationInsert } from './types';
-import { downloadDeliveryOrderPDF } from './pdf';
+import { DeliveryOrderPrintModal } from './pdf';
 
 interface Props {
   installation: Installation | null;
@@ -44,7 +45,16 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { data: quotes = [] } = useQuotes();
+  const { data: suppliers = [] } = useSuppliers();
   const { profile, design } = useDesign('delivery_order');
+
+  // Installations are carried out by contractors. Active rows only — anything else
+  // is dead weight in the picker. Existing rows whose tech name no longer matches
+  // a contractor still surface in the legend (free-text fallback).
+  const contractors = useMemo(
+    () => suppliers.filter((s) => (s.kind ?? 'Supplier') === 'Contractor' && s.status === 'Active'),
+    [suppliers]
+  );
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<InstallationInsert>(
@@ -80,22 +90,12 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
   };
 
   const canDownloadDO = !isNew && form.status === 'Completed' && !!profile && !!design;
-
-  const handleDownloadDO = () => {
-    if (!installation || !profile || !design) return;
-    downloadDeliveryOrderPDF({
-      installation,
-      quote: linkedQuote,
-      customer: linkedCustomer,
-      products,
-      profile,
-      design,
-    });
-  };
+  const [showPrint, setShowPrint] = useState(false);
 
   const valid = !!form.customer_id && !!form.tech.trim() && !!form.scheduled;
 
   return (
+    <>
     <Modal title={isNew ? 'New Installation' : form.id} subtitle={!isNew ? `Status: ${form.status}` : undefined} onClose={onClose}>
       <div>
         <label style={labelStyle}>Linked Quotation / Proposal</label>
@@ -162,12 +162,14 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label style={labelStyle}>Technician</label>
-          <input
-            value={form.tech}
-            onChange={(e) => setForm((f) => ({ ...f, tech: e.target.value }))}
-            style={inputStyle}
-            placeholder="e.g. Zulkifli A."
+          <label style={labelStyle}>Contractor</label>
+          <SearchableSelect
+            options={contractors.map((c) => ({ value: c.name, label: c.name, meta: c.category }))}
+            value={form.tech || null}
+            onChange={(name) => setForm((f) => ({ ...f, tech: name ?? '' }))}
+            placeholder="— Select a contractor —"
+            nullable
+            nullLabel="— Select a contractor —"
           />
         </div>
         <div>
@@ -252,7 +254,7 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
 
         {canDownloadDO && (
           <button
-            onClick={handleDownloadDO}
+            onClick={() => setShowPrint(true)}
             style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${C.green}`, background: 'transparent', color: C.green, fontFamily: 'Figtree', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
             ⤓ Download Delivery Order
@@ -284,5 +286,10 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
         </button>
       </div>
     </Modal>
+
+    {showPrint && installation && (
+      <DeliveryOrderPrintModal installation={installation} onClose={() => setShowPrint(false)} />
+    )}
+    </>
   );
 }

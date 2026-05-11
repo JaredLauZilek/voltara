@@ -15,6 +15,7 @@ import { ProductsScreen } from '@/features/products';
 import { SuppliersScreen } from '@/features/suppliers';
 import { SEOMonitorScreen } from '@/features/seo';
 import { FormDesignsScreen } from '@/features/form-designs';
+import { ExportsScreen } from '@/features/exports';
 import { SupabaseHealthScreen } from '@/features/supabase-health';
 
 export const ROUTES: Record<ScreenId, ReactNode> = {
@@ -33,5 +34,6 @@ export const ROUTES: Record<ScreenId, ReactNode> = {
   suppliers:      <SuppliersScreen />,
   seo:            <SEOMonitorScreen />,
   formdesigns:    <FormDesignsScreen />,
+  exports:        <ExportsScreen />,
   supabasehealth: <SupabaseHealthScreen />,
 };

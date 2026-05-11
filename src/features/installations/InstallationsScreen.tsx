@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { C } from '@/shared/tokens';
+import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
-import { Badge } from '@/shared/components/Badge';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useQuotes } from '@/features/sales';
+import { useDesign } from '@/features/form-designs';
 import {
   useInstallations,
   useCreateInstallation,
@@ -16,6 +16,7 @@ import {
 import { InstallationModal } from './InstallationModal';
 import { INSTALLATION_STATUSES } from './types';
 import type { Installation, InstallationInsert } from './types';
+import { DeliveryOrderPrintModal } from './pdf';
 
 type StatusFilter = 'All' | (typeof INSTALLATION_STATUSES)[number];
 
@@ -24,6 +25,7 @@ export function InstallationsScreen() {
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { data: quotes = [] } = useQuotes();
+  const { profile, design } = useDesign('delivery_order');
   const createMut = useCreateInstallation();
   const updateMut = useUpdateInstallation();
   const deleteMut = useDeleteInstallation();
@@ -35,18 +37,11 @@ export function InstallationsScreen() {
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('All');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<Installation | 'new' | null>(null);
+  const [printRow, setPrintRow] = useState<Installation | null>(null);
 
   const completed = installations.filter((i) => i.status === 'Completed').length;
   const overdue = installations.filter((i) => i.status === 'Overdue').length;
   const inProgress = installations.filter((i) => i.status === 'In Progress').length;
-
-  const techLoad = new Map<string, number>();
-  for (const i of installations) {
-    if (i.status === 'Pending' || i.status === 'In Progress') {
-      techLoad.set(i.tech, (techLoad.get(i.tech) ?? 0) + 1);
-    }
-  }
-  const techRows = [...techLoad.entries()].map(([name, jobs]) => ({ name, jobs, max: 6 }));
 
   const filtered = installations.filter((i) => {
     if (filterStatus !== 'All' && i.status !== filterStatus) return false;
@@ -84,7 +79,7 @@ export function InstallationsScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Scheduled" value={installations.length} sub={`${techLoad.size} technicians active`} />
+        <KPICard label="Scheduled" value={installations.length} sub="Across all installations" />
         <KPICard label="Completed" value={completed} sub="All time" accent />
         <KPICard label="In Progress" value={inProgress} sub="Currently on site" />
         <KPICard label="Overdue" value={overdue} sub="Requires rescheduling" />
@@ -96,12 +91,12 @@ export function InstallationsScreen() {
         onFilterChange={(f) => setFilterStatus(f as StatusFilter)}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search ref / customer / tech…"
+        searchPlaceholder="Search ref / customer / contractor…"
         primaryLabel="+ New Installation"
         onPrimary={() => setModal('new')}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16 }}>
+      <div>
         <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.divider}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>Installation Schedule</div>
@@ -109,7 +104,7 @@ export function InstallationsScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.seasalt }}>
-                {['Ref', 'Customer', 'Quote', 'Technician', 'Date', 'Product', 'Status'].map((h) => (
+                {['Ref', 'Customer', 'Quote', 'Contractor', 'Date', 'Product', 'Status', ''].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -150,8 +145,34 @@ export function InstallationsScreen() {
                         {productLabel(r)}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <Badge status={r.status} />
+                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <InstallationStatusSelect
+                        current={r.status}
+                        onChange={(next) =>
+                          updateMut.mutate({ id: r.id, patch: { status: next } })
+                        }
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      {r.status === 'Completed' && profile && design ? (
+                        <button
+                          onClick={() => setPrintRow(r)}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: 8,
+                            border: `1px solid ${C.green}`,
+                            background: 'transparent',
+                            color: C.green,
+                            fontFamily: 'Figtree',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ⤓ DO
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -174,32 +195,6 @@ export function InstallationsScreen() {
           />
         </div>
 
-        <div style={{ background: C.white, borderRadius: 16, padding: 20, border: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.green, marginBottom: 4 }}>Technician Load</div>
-          <div style={{ fontSize: 12, color: C.slate, marginBottom: 16 }}>Active jobs</div>
-          {techRows.length === 0 && <div style={{ fontSize: 12, color: C.slate }}>No active jobs.</div>}
-          {techRows.map((t) => (
-            <div key={t.name} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</span>
-                <span style={{ fontSize: 12, color: C.slate }}>
-                  {t.jobs}/{t.max}
-                </span>
-              </div>
-              <div style={{ background: C.divider, borderRadius: 99, height: 7 }}>
-                <div
-                  style={{
-                    width: `${(t.jobs / t.max) * 100}%`,
-                    height: '100%',
-                    background: t.jobs >= t.max - 1 ? C.yellow : C.green,
-                    borderRadius: 99,
-                    transition: 'width .5s',
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {modal && (
@@ -210,6 +205,54 @@ export function InstallationsScreen() {
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}
+
+      {printRow && (
+        <DeliveryOrderPrintModal
+          installation={printRow}
+          onClose={() => setPrintRow(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function InstallationStatusSelect({
+  current,
+  onChange,
+}: {
+  current: Installation['status'];
+  onChange: (next: Installation['status']) => void;
+}) {
+  const palette = STATUS_COLORS[current] ?? { bg: C.divider, color: C.slate };
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <select
+        value={current}
+        onChange={(e) => {
+          const next = e.target.value as Installation['status'];
+          if (next !== current) onChange(next);
+        }}
+        style={{
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          background: palette.bg,
+          color: palette.color,
+          border: 'none',
+          borderRadius: 99,
+          padding: '3px 26px 3px 10px',
+          fontSize: 11,
+          fontWeight: 700,
+          fontFamily: 'Figtree',
+          cursor: 'pointer',
+          letterSpacing: '0.03em',
+          outline: 'none',
+        }}
+      >
+        {INSTALLATION_STATUSES.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
+      <span style={{ position: 'absolute', right: 9, pointerEvents: 'none', fontSize: 7, color: palette.color, lineHeight: 1 }}>▼</span>
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { useProducts } from '@/features/products';
 import { useSalesManagers } from '@/features/sales-managers';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useAutoExpireQuotes } from './hooks';
 import { QuoteModal } from './QuoteModal';
+import { ShareModal } from '@/shared/components/ShareModal';
+import { WhatsAppSendModal } from './whatsapp';
 import { QUOTE_STATUSES, calcQuoteTotal } from './types';
 import type { Quote, QuoteInsert } from './types';
 
@@ -33,6 +35,8 @@ export function SalesScreen() {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'list' | 'pipeline'>('list');
   const [modal, setModal] = useState<Quote | 'new' | null>(null);
+  const [shareQuote, setShareQuote] = useState<Quote | null>(null);
+  const [waQuote, setWaQuote] = useState<Quote | null>(null);
   const [pendingChange, setPendingChange] = useState<{ quote: Quote; newStatus: Quote['status'] } | null>(null);
 
   // Always resolve the modal's quote against the latest query data so the
@@ -207,7 +211,7 @@ export function SalesScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.seasalt }}>
-                {['Ref', 'Type', 'Customer', 'Manager', 'Total', 'Status', 'Days Idle', 'Last Follow-up', 'Expires'].map((h) => (
+                {['Ref', 'Type', 'Customer', 'Manager', 'Total', 'Status', 'Days Idle', 'Last Follow-up', 'Expires', ''].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -229,13 +233,22 @@ export function SalesScreen() {
             <tbody>
               {pagination.pageItems.map((q) => {
                 const customer = customerById.get(q.customer_id);
+                const idleDays = idleDaysOf(q);
+                const isStale = idleDays !== null && idleDays > 7;
+                const restingBg = isStale ? '#FDEAEA' : 'transparent';
                 return (
                   <tr
                     key={q.id}
-                    style={{ borderBottom: `1px solid ${C.divider}`, cursor: 'pointer' }}
+                    style={{
+                      borderBottom: `1px solid ${C.divider}`,
+                      cursor: 'pointer',
+                      background: restingBg,
+                      // Red left-rail flags stale Sent quotes for follow-up.
+                      boxShadow: isStale ? `inset 3px 0 0 0 #C0321A` : undefined,
+                    }}
                     onClick={() => setModal(q)}
                     onMouseEnter={(e) => (e.currentTarget.style.background = C.hoverRow)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = restingBg)}
                   >
                     <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{q.id}</td>
                     <td style={{ padding: '13px 16px' }}>
@@ -307,6 +320,26 @@ export function SalesScreen() {
                       </button>
                     </td>
                     <td style={{ padding: '13px 16px', color: C.slate }}>{q.valid_to}</td>
+                    <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setShareQuote(q)}
+                        title="Share this quotation"
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: 8,
+                          border: `1px solid ${C.border}`,
+                          background: C.white,
+                          color: C.green,
+                          fontFamily: 'Figtree',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ↗ Share
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -447,6 +480,38 @@ export function SalesScreen() {
         />
       )}
 
+      {shareQuote && (() => {
+        const customer = customerById.get(shareQuote.customer_id);
+        const phone = customer?.phone ?? null;
+        return (
+          <ShareModal
+            title="Share quotation"
+            subtitle={shareQuote.id}
+            recipient={{
+              name: customer?.name ?? shareQuote.customer_id,
+              sub: customer?.type ?? undefined,
+            }}
+            methods={[
+              {
+                id: 'whatsapp',
+                icon: '◐',
+                label: 'WhatsApp',
+                hint: phone ? `Send to ${phone} via Respond.io` : 'Customer has no phone on file',
+                enabled: !!phone,
+                onClick: () => { const q = shareQuote; setShareQuote(null); setWaQuote(q); },
+              },
+              { id: 'email',     icon: '✉', label: 'Email',     hint: customer?.email ?? 'Coming soon', enabled: false },
+              { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
+            ]}
+            onClose={() => setShareQuote(null)}
+          />
+        );
+      })()}
+
+      {waQuote && (
+        <WhatsAppSendModal quote={waQuote} onClose={() => setWaQuote(null)} />
+      )}
+
       {pendingChange && (() => {
         const isDeducting = pendingChange.newStatus === 'Case Won';
         const isRestoring = pendingChange.quote.status === 'Case Won' && !isDeducting;
@@ -539,6 +604,15 @@ function formatIdleDays(sinceISO: string): React.ReactNode {
       {days} {days === 1 ? 'day' : 'days'}
     </span>
   );
+}
+
+// Returns the idle-day count for a quote, or null if "idle" doesn't apply
+// (status !== 'Sent'). Negative values are clamped to 0.
+function idleDaysOf(q: Quote): number | null {
+  if (q.status !== 'Sent') return null;
+  const since = q.last_followup_date ?? q.valid_from;
+  const days = Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000);
+  return Math.max(0, days);
 }
 
 function StatusSelect({ current, onChange }: { current: Quote['status']; onChange: (s: Quote['status']) => void }) {

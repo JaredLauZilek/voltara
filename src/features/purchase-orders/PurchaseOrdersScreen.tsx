@@ -7,6 +7,7 @@ import { formatRMShort } from '@/shared/lib/format';
 import { useSuppliers } from '@/features/suppliers';
 import { usePurchaseOrders, useCreatePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from './hooks';
 import { POModal } from './POModal';
+import { ShareModal } from '@/shared/components/ShareModal';
 import { PO_STATUSES, calcPOTotal } from './types';
 import type { PurchaseOrder, PurchaseOrderInsert } from './types';
 
@@ -24,6 +25,7 @@ export function PurchaseOrdersScreen() {
   const [filterStatus, setFilterStatus] = useState<'All' | PurchaseOrder['status']>('All');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<PurchaseOrder | 'new' | null>(null);
+  const [sharePo, setSharePo] = useState<PurchaseOrder | null>(null);
 
   // Always resolve the modal's PO against the latest query data so that after
   // a save (which invalidates the query) Print PDF renders fresh notes/totals.
@@ -76,7 +78,7 @@ export function PurchaseOrdersScreen() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: C.seasalt }}>
-              {['PO Ref', 'Supplier', 'Total', 'Created', 'Status'].map((h) => (
+              {['PO Ref', 'Supplier', 'Total', 'Created', 'Status', ''].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -120,6 +122,26 @@ export function PurchaseOrdersScreen() {
                       }
                     />
                   </td>
+                  <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setSharePo(p)}
+                      title="Share this purchase order"
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: 8,
+                        border: `1px solid ${C.border}`,
+                        background: C.white,
+                        color: C.green,
+                        fontFamily: 'Figtree',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ↗ Share
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -148,6 +170,33 @@ export function PurchaseOrdersScreen() {
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}
+
+      {sharePo && (() => {
+        const supplier = supplierById.get(sharePo.supplier_id ?? '');
+        const phone = supplier?.phone ?? null;
+        return (
+          <ShareModal
+            title="Share purchase order"
+            subtitle={sharePo.id}
+            recipient={{
+              name: supplier?.name ?? sharePo.supplier_id ?? '—',
+              sub: supplier?.category ?? undefined,
+            }}
+            methods={[
+              {
+                id: 'whatsapp',
+                icon: '◐',
+                label: 'WhatsApp',
+                hint: phone ? `Send to ${phone} (coming soon)` : 'Supplier has no phone on file',
+                enabled: false,
+              },
+              { id: 'email',     icon: '✉', label: 'Email',     hint: supplier?.email ?? 'Coming soon', enabled: false },
+              { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
+            ]}
+            onClose={() => setSharePo(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

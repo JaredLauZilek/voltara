@@ -17,6 +17,7 @@ export type ScreenId =
   | 'suppliers'
   | 'seo'
   | 'formdesigns'
+  | 'exports'
   | 'supabasehealth';
 
 export interface NavEntry {
@@ -79,6 +80,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Settings',
     items: [
       { id: 'formdesigns',    icon: '◨', label: 'Form Designs' },
+      { id: 'exports',        icon: '⤓', label: 'Exports' },
       { id: 'supabasehealth', icon: '◈', label: 'System Health' },
     ],
   },
@@ -100,5 +102,6 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   suppliers:      'Suppliers & Vendors',
   seo:            'SEO Monitor',
   formdesigns:    'Form Designs',
+  exports:        'Exports',
   supabasehealth: 'System Health',
 };

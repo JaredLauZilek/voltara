@@ -8,6 +8,7 @@ import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from './hooks';
 import { InvoiceModal } from './InvoiceModal';
+import { ShareModal } from '@/shared/components/ShareModal';
 import { calcInvoiceTotals } from './totals';
 import { INVOICE_STATUSES } from './types';
 import type { Invoice, InvoiceInsert } from './types';
@@ -30,6 +31,7 @@ export function InvoicesScreen() {
   const [filter, setFilter] = useState<'All' | Invoice['status']>('All');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<Invoice | 'new' | null>(null);
+  const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
 
   // Always resolve the modal's invoice against the latest query data so
   // that after a save (which invalidates the query) the modal — and any
@@ -91,7 +93,7 @@ export function InvoicesScreen() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: C.seasalt }}>
-              {['Invoice ID', 'Customer', 'Items', 'Amount', 'Status', 'Issued', 'Due'].map((h) => (
+              {['Invoice ID', 'Customer', 'Items', 'Amount', 'Status', 'Issued', 'Due', ''].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -143,6 +145,26 @@ export function InvoicesScreen() {
                   </td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{inv.issue_date}</td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{inv.due_date}</td>
+                  <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setShareInvoice(inv)}
+                      title="Share this invoice"
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: 8,
+                        border: `1px solid ${C.border}`,
+                        background: C.white,
+                        color: C.green,
+                        fontFamily: 'Figtree',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ↗ Share
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -171,6 +193,33 @@ export function InvoicesScreen() {
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}
+
+      {shareInvoice && (() => {
+        const customer = customerById.get(shareInvoice.customer_id);
+        const phone = customer?.phone ?? null;
+        return (
+          <ShareModal
+            title="Share invoice"
+            subtitle={shareInvoice.id}
+            recipient={{
+              name: customer?.name ?? shareInvoice.customer_id,
+              sub: customer?.type ?? undefined,
+            }}
+            methods={[
+              {
+                id: 'whatsapp',
+                icon: '◐',
+                label: 'WhatsApp',
+                hint: phone ? `Send to ${phone} (coming soon)` : 'Customer has no phone on file',
+                enabled: false,
+              },
+              { id: 'email',     icon: '✉', label: 'Email',     hint: customer?.email ?? 'Coming soon', enabled: false },
+              { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
+            ]}
+            onClose={() => setShareInvoice(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
