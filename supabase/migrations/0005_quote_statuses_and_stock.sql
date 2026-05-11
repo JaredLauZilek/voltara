@@ -12,14 +12,9 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
--- 1. Migrate existing quote status data to new values
--- ---------------------------------------------------------------------------
-update quotes set status = 'Case Won'  where status = 'Accepted';
-update quotes set status = 'Case Lost' where status in ('Declined', 'Expired');
-update quotes set status = 'Sent'      where status = 'Viewed';
-
--- ---------------------------------------------------------------------------
--- 2. Replace the status CHECK constraint
+-- 1. Drop the old status CHECK constraint first so the data migration in
+--    step 2 isn't rejected by the old allow-list (which doesn't include
+--    'Case Won' / 'Case Lost').
 -- ---------------------------------------------------------------------------
 do $$
 declare
@@ -37,6 +32,16 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 2. Migrate existing quote status data to new values
+-- ---------------------------------------------------------------------------
+update quotes set status = 'Case Won'  where status = 'Accepted';
+update quotes set status = 'Case Lost' where status in ('Declined', 'Expired');
+update quotes set status = 'Sent'      where status = 'Viewed';
+
+-- ---------------------------------------------------------------------------
+-- 3. Re-add the status CHECK constraint with the new allow-list
+-- ---------------------------------------------------------------------------
 alter table quotes
   add constraint quotes_status_check
   check (status in ('Draft', 'Sent', 'Case Won', 'Case Lost'));
