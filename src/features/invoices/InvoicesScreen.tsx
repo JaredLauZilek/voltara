@@ -9,6 +9,7 @@ import { useProducts } from '@/features/products';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from './hooks';
 import { InvoiceModal } from './InvoiceModal';
 import { ShareModal } from '@/shared/components/ShareModal';
+import { InvoiceEmailModal } from './email';
 import { calcInvoiceTotals } from './totals';
 import { INVOICE_STATUSES } from './types';
 import type { Invoice, InvoiceInsert } from './types';
@@ -32,6 +33,7 @@ export function InvoicesScreen() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<Invoice | 'new' | null>(null);
   const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
+  const [emailInvoice, setEmailInvoice] = useState<Invoice | null>(null);
 
   // Always resolve the modal's invoice against the latest query data so
   // that after a save (which invalidates the query) the modal — and any
@@ -213,13 +215,24 @@ export function InvoicesScreen() {
                 hint: phone ? `Send to ${phone} (coming soon)` : 'Customer has no phone on file',
                 enabled: false,
               },
-              { id: 'email',     icon: '✉', label: 'Email',     hint: customer?.email ?? 'Coming soon', enabled: false },
+              {
+                id: 'email',
+                icon: '✉',
+                label: 'Email',
+                hint: customer?.email ? `Send to ${customer.email} via Resend` : 'Customer has no email on file',
+                enabled: !!customer?.email,
+                onClick: () => { const inv = shareInvoice; setShareInvoice(null); setEmailInvoice(inv); },
+              },
               { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
             ]}
             onClose={() => setShareInvoice(null)}
           />
         );
       })()}
+
+      {emailInvoice && (
+        <InvoiceEmailModal invoice={emailInvoice} onClose={() => setEmailInvoice(null)} />
+      )}
     </div>
   );
 }

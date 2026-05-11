@@ -17,6 +17,8 @@ import { InstallationModal } from './InstallationModal';
 import { INSTALLATION_STATUSES } from './types';
 import type { Installation, InstallationInsert } from './types';
 import { DeliveryOrderPrintModal } from './pdf';
+import { ShareModal } from '@/shared/components/ShareModal';
+import { DeliveryOrderEmailModal } from './email';
 
 type StatusFilter = 'All' | (typeof INSTALLATION_STATUSES)[number];
 
@@ -38,6 +40,8 @@ export function InstallationsScreen() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<Installation | 'new' | null>(null);
   const [printRow, setPrintRow] = useState<Installation | null>(null);
+  const [shareRow, setShareRow] = useState<Installation | null>(null);
+  const [emailRow, setEmailRow] = useState<Installation | null>(null);
 
   const completed = installations.filter((i) => i.status === 'Completed').length;
   const overdue = installations.filter((i) => i.status === 'Overdue').length;
@@ -154,14 +158,34 @@ export function InstallationsScreen() {
                       />
                     </td>
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
-                      {r.status === 'Completed' && profile && design ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {r.status === 'Completed' && profile && design ? (
+                          <button
+                            onClick={() => setPrintRow(r)}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: 8,
+                              border: `1px solid ${C.green}`,
+                              background: 'transparent',
+                              color: C.green,
+                              fontFamily: 'Figtree',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            ⤓ DO
+                          </button>
+                        ) : null}
                         <button
-                          onClick={() => setPrintRow(r)}
+                          onClick={() => setShareRow(r)}
+                          title="Share this delivery order"
                           style={{
                             padding: '5px 10px',
                             borderRadius: 8,
-                            border: `1px solid ${C.green}`,
-                            background: 'transparent',
+                            border: `1px solid ${C.border}`,
+                            background: C.white,
                             color: C.green,
                             fontFamily: 'Figtree',
                             fontSize: 11,
@@ -170,9 +194,9 @@ export function InstallationsScreen() {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          ⤓ DO
+                          ↗ Share
                         </button>
-                      ) : null}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -211,6 +235,43 @@ export function InstallationsScreen() {
           installation={printRow}
           onClose={() => setPrintRow(null)}
         />
+      )}
+
+      {shareRow && (() => {
+        const customer = customerById.get(shareRow.customer_id);
+        return (
+          <ShareModal
+            title="Share delivery order"
+            subtitle={shareRow.id}
+            recipient={{
+              name: customer?.name ?? shareRow.customer_id,
+              sub: customer?.type ?? undefined,
+            }}
+            methods={[
+              {
+                id: 'whatsapp',
+                icon: '◐',
+                label: 'WhatsApp',
+                hint: customer?.phone ? `Send to ${customer.phone} (coming soon)` : 'Customer has no phone on file',
+                enabled: false,
+              },
+              {
+                id: 'email',
+                icon: '✉',
+                label: 'Email',
+                hint: customer?.email ? `Send to ${customer.email} via Resend` : 'Customer has no email on file',
+                enabled: !!customer?.email,
+                onClick: () => { const r = shareRow; setShareRow(null); setEmailRow(r); },
+              },
+              { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon', enabled: false },
+            ]}
+            onClose={() => setShareRow(null)}
+          />
+        );
+      })()}
+
+      {emailRow && (
+        <DeliveryOrderEmailModal installation={emailRow} onClose={() => setEmailRow(null)} />
       )}
     </div>
   );

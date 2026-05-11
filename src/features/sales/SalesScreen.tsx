@@ -12,6 +12,7 @@ import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useAutoExpir
 import { QuoteModal } from './QuoteModal';
 import { ShareModal } from '@/shared/components/ShareModal';
 import { WhatsAppSendModal } from './whatsapp';
+import { QuoteEmailModal } from './email';
 import { QUOTE_STATUSES, calcQuoteTotal } from './types';
 import type { Quote, QuoteInsert } from './types';
 
@@ -37,6 +38,7 @@ export function SalesScreen() {
   const [modal, setModal] = useState<Quote | 'new' | null>(null);
   const [shareQuote, setShareQuote] = useState<Quote | null>(null);
   const [waQuote, setWaQuote] = useState<Quote | null>(null);
+  const [emailQuote, setEmailQuote] = useState<Quote | null>(null);
   const [pendingChange, setPendingChange] = useState<{ quote: Quote; newStatus: Quote['status'] } | null>(null);
 
   // Always resolve the modal's quote against the latest query data so the
@@ -500,7 +502,14 @@ export function SalesScreen() {
                 enabled: !!phone,
                 onClick: () => { const q = shareQuote; setShareQuote(null); setWaQuote(q); },
               },
-              { id: 'email',     icon: '✉', label: 'Email',     hint: customer?.email ?? 'Coming soon', enabled: false },
+              {
+                id: 'email',
+                icon: '✉',
+                label: 'Email',
+                hint: customer?.email ? `Send to ${customer.email} via Resend` : 'Customer has no email on file',
+                enabled: !!customer?.email,
+                onClick: () => { const q = shareQuote; setShareQuote(null); setEmailQuote(q); },
+              },
               { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
             ]}
             onClose={() => setShareQuote(null)}
@@ -510,6 +519,10 @@ export function SalesScreen() {
 
       {waQuote && (
         <WhatsAppSendModal quote={waQuote} onClose={() => setWaQuote(null)} />
+      )}
+
+      {emailQuote && (
+        <QuoteEmailModal quote={emailQuote} onClose={() => setEmailQuote(null)} />
       )}
 
       {pendingChange && (() => {

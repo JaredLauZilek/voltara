@@ -408,6 +408,53 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['form_designs']['Insert']>;
       };
+      company_email_profile: {
+        Row: {
+          id: string;
+          default_from_name: string;
+          default_from_address: string;
+          default_reply_to: string | null;
+          default_cc: string | null;
+          default_bcc: string | null;
+          default_signature: string | null;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['company_email_profile']['Row'], 'updated_at' | 'id' | 'default_from_name' | 'default_from_address'> & {
+          id?: string;
+          default_from_name?: string;
+          default_from_address?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['company_email_profile']['Insert']>;
+      };
+      email_designs: {
+        Row: {
+          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order';
+          from_name: string | null;
+          from_address: string | null;
+          reply_to: string | null;
+          cc: string | null;
+          bcc: string | null;
+          subject_template: string;
+          intro_text: string | null;
+          body_text: string | null;
+          signature_text: string | null;
+          footer_text: string | null;
+          accent_color: string | null;
+          attach_pdf: boolean;
+          show_logo: boolean;
+          show_doc_summary: boolean;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['email_designs']['Row'], 'updated_at' | 'subject_template' | 'attach_pdf' | 'show_logo' | 'show_doc_summary'> & {
+          subject_template?: string;
+          attach_pdf?: boolean;
+          show_logo?: boolean;
+          show_doc_summary?: boolean;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['email_designs']['Insert']>;
+      };
       bills: {
         Row: {
           id: string;

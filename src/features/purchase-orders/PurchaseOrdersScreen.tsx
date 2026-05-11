@@ -8,6 +8,7 @@ import { useSuppliers } from '@/features/suppliers';
 import { usePurchaseOrders, useCreatePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from './hooks';
 import { POModal } from './POModal';
 import { ShareModal } from '@/shared/components/ShareModal';
+import { POEmailModal } from './email';
 import { PO_STATUSES, calcPOTotal } from './types';
 import type { PurchaseOrder, PurchaseOrderInsert } from './types';
 
@@ -26,6 +27,7 @@ export function PurchaseOrdersScreen() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<PurchaseOrder | 'new' | null>(null);
   const [sharePo, setSharePo] = useState<PurchaseOrder | null>(null);
+  const [emailPo, setEmailPo] = useState<PurchaseOrder | null>(null);
 
   // Always resolve the modal's PO against the latest query data so that after
   // a save (which invalidates the query) Print PDF renders fresh notes/totals.
@@ -190,13 +192,24 @@ export function PurchaseOrdersScreen() {
                 hint: phone ? `Send to ${phone} (coming soon)` : 'Supplier has no phone on file',
                 enabled: false,
               },
-              { id: 'email',     icon: '✉', label: 'Email',     hint: supplier?.email ?? 'Coming soon', enabled: false },
+              {
+                id: 'email',
+                icon: '✉',
+                label: 'Email',
+                hint: supplier?.email ? `Send to ${supplier.email} via Resend` : 'Supplier has no email on file',
+                enabled: !!supplier?.email,
+                onClick: () => { const p = sharePo; setSharePo(null); setEmailPo(p); },
+              },
               { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
             ]}
             onClose={() => setSharePo(null)}
           />
         );
       })()}
+
+      {emailPo && (
+        <POEmailModal po={emailPo} onClose={() => setEmailPo(null)} />
+      )}
     </div>
   );
 }
