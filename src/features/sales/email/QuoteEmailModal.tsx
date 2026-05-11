@@ -50,7 +50,7 @@ export function QuoteEmailModal({ quote, onClose }: Props) {
         date:      fmtDate(quote.valid_from),
         due_date:  '—',
         valid_to:  fmtDate(quote.valid_to),
-        total:     formatRM(calcQuoteTotal(quote.line_items, quote.discount)),
+        total:     formatRM(calcQuoteTotal(quote.line_items, quote.discount), 2),
         currency:  'RM',
       },
       company: {

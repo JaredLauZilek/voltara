@@ -13,6 +13,16 @@ export const C = {
   border:   '#EBEBEB',
   divider:  '#F3F3F3',
   hoverRow: '#FAFAFA',
+  // Semantic accents — keep status badges and inline alerts consistent with
+  // the rest of the palette without features inlining hex.
+  error:     '#C0321A',
+  errorBg:   '#FDEAEA',
+  errorBgSoft: '#FFAAAA',
+  info:      '#1A62C0',
+  infoBg:    '#E3F0FF',
+  warning:   '#B07D00',
+  warningBg: '#FFF8E1',
+  ink:       '#1a1a1a',
 } as const;
 
 export const RADIUS = {
@@ -49,6 +59,7 @@ export const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   Draft:        { bg: '#F3F3F3', color: '#767B77' },
   Sent:         { bg: '#E3F0FF', color: '#1A62C0' },
   Paid:         { bg: '#E4F3E3', color: '#1B512D' },
+  'Partially Paid': { bg: '#FFF8E1', color: '#B07D00' },
   'Case Won':   { bg: '#E4F3E3', color: '#1B512D' },
   'Case Lost':  { bg: '#FDEAEA', color: '#C0321A' },
   'Expired':    { bg: '#FFF0E0', color: '#B45309' },

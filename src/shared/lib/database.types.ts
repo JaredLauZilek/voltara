@@ -112,14 +112,34 @@ export interface Database {
           discount: number;
           tax: number;
           notes: string | null;
-          status: 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
+          status: 'Draft' | 'Sent' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Cancelled';
           issue_date: string;
           due_date: string;
           stock_deducted: boolean;
+          deposit_percent: number | null;
+          discount_mode: 'percent' | 'amount';
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'created_at' | 'stock_deducted'> & { created_at?: string; stock_deducted?: boolean };
+        Insert: Omit<Database['public']['Tables']['invoices']['Row'], 'created_at' | 'stock_deducted' | 'deposit_percent' | 'discount_mode'> & { created_at?: string; stock_deducted?: boolean; deposit_percent?: number | null; discount_mode?: 'percent' | 'amount' };
         Update: Partial<Database['public']['Tables']['invoices']['Insert']>;
+      };
+      invoice_payments: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          amount: number;
+          paid_on: string;
+          method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Cheque' | 'Other' | null;
+          reference: string | null;
+          label: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['invoice_payments']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['invoice_payments']['Insert']>;
       };
       quotes: {
         Row: {

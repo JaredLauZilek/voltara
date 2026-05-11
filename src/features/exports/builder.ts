@@ -7,6 +7,7 @@ import type { Customer } from '@/features/customers';
 import type { Supplier } from '@/features/suppliers';
 import type { Product } from '@/features/products';
 import type { Invoice } from '@/features/invoices';
+import type { InvoicePayment } from '@/features/invoices/payments/types';
 import type { Bill } from '@/features/bills';
 import type { Expense } from '@/features/expenses';
 import type { PurchaseOrder } from '@/features/purchase-orders';
@@ -22,6 +23,7 @@ import { inPeriod, type Period } from './period';
 export interface ExportInputs {
   period: Period;
   invoices: Invoice[];
+  invoicePayments: InvoicePayment[];
   bills: Bill[];
   expenses: Expense[];
   pos: PurchaseOrder[];
@@ -100,7 +102,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
 
   const revenue = periodInvoices
     .filter((i) => i.status === 'Paid')
-    .reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax).total, 0);
+    .reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total, 0);
   const cogs = periodBills
     .filter((b) => b.status === 'Paid')
     .reduce((s, b) => s + b.amount + b.tax, 0);
@@ -129,7 +131,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
     toCSV(
       ['entity', 'status', 'count', 'total_rm'],
       [
-        ...statusBuckets(periodInvoices, (i) => i.status, (i) => calcInvoiceTotals(i.line_items, i.discount, i.tax).total)
+        ...statusBuckets(periodInvoices, (i) => i.status, (i) => calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total)
           .map(({ status, count, total }) => ['invoices', status, count, total.toFixed(2)] as const),
         ...statusBuckets(periodBills, (b) => b.status, (b) => b.amount + b.tax)
           .map(({ status, count, total }) => ['bills', status, count, total.toFixed(2)] as const),
@@ -147,7 +149,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
       ['ledger', 'doc_id', 'party', 'amount_rm', 'currency', 'issued', 'due', 'status', 'age_days'],
       [
         ...openInvoices.map((i) => {
-          const total = calcInvoiceTotals(i.line_items, i.discount, i.tax).total;
+          const total = calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total;
           const age = ageDays(i.due_date);
           return [
             'AR',
@@ -185,9 +187,9 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
     '02-revenue/invoices.csv',
     toCSV(
       ['id', 'customer_id', 'customer_name', 'quote_id', 'issue_date', 'due_date', 'status',
-       'subtotal_rm', 'discount_pct', 'discount_amt_rm', 'tax_pct', 'tax_amt_rm', 'total_rm', 'notes'],
+       'subtotal_rm', 'discount_mode', 'discount_value', 'discount_amt_rm', 'tax_pct', 'tax_amt_rm', 'total_rm', 'notes'],
       periodInvoices.map((i) => {
-        const t = calcInvoiceTotals(i.line_items, i.discount, i.tax);
+        const t = calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode);
         return [
           i.id,
           i.customer_id,
@@ -197,6 +199,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
           i.due_date,
           i.status,
           t.subtotal.toFixed(2),
+          i.discount_mode,
           i.discount,
           t.discountAmt.toFixed(2),
           i.tax,
@@ -215,7 +218,13 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
     toCSV(['id', 'customer_id', 'status', 'created_date', 'total_rm'], [])
   );
 
-  // Render invoice PDFs
+  // Render invoice PDFs (with their payment history attached)
+  const paymentsByInvoice = new Map<string, InvoicePayment[]>();
+  for (const p of inputs.invoicePayments) {
+    const arr = paymentsByInvoice.get(p.invoice_id) ?? [];
+    arr.push(p);
+    paymentsByInvoice.set(p.invoice_id, arr);
+  }
   for (const inv of periodInvoices) {
     onProgress({ message: `Rendering INV ${inv.id}…`, fraction: stepsDone / totalSteps });
     const customer = customerById.get(inv.customer_id) ?? null;
@@ -226,6 +235,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
         products: inputs.products,
         profile: inputs.invoiceProfile,
         design: inputs.invoiceDesign,
+        payments: paymentsByInvoice.get(inv.id) ?? [],
       })
     ).toBlob();
     zip.file(`02-revenue/pdfs/${safeFile(`${inv.id} (${customer?.name ?? ''})`.trim())}.pdf`, blob);

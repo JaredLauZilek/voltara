@@ -42,6 +42,7 @@ interface Props {
   products: Product[];
   profile: CompanyProfile;
   design: FormDesign;
+  payments?: { paid_on: string; amount: number; method: string | null; label: string | null }[];
 }
 
 function fmtDate(iso: string) {
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export function InvoicePdf({ invoice, customer, products, profile, design }: Props) {
+export function InvoicePdf({ invoice, customer, products, profile, design, payments = [] }: Props) {
   const accent = design.accent_color || profile.brand_color;
 
   const items = invoice.line_items.map((li) => {
@@ -303,7 +304,7 @@ export function InvoicePdf({ invoice, customer, products, profile, design }: Pro
     };
   });
 
-  const totals = calcInvoiceTotals(invoice.line_items, invoice.discount, invoice.tax);
+  const totals = calcInvoiceTotals(invoice.line_items, invoice.discount, invoice.tax, invoice.discount_mode);
 
   const cv = design.column_visibility;
 
@@ -472,7 +473,9 @@ export function InvoicePdf({ invoice, customer, products, profile, design }: Pro
               </View>
               {invoice.discount > 0 ? (
                 <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>Discount ({invoice.discount}%)</Text>
+                  <Text style={styles.totalsLabel}>
+                    Discount{invoice.discount_mode === 'amount' ? '' : ` (${invoice.discount}%)`}
+                  </Text>
                   <Text style={styles.totalsValue}>− {fmtRM(totals.discountAmt)}</Text>
                 </View>
               ) : null}
@@ -488,6 +491,51 @@ export function InvoicePdf({ invoice, customer, products, profile, design }: Pro
               </View>
             </View>
           </View>
+
+          {payments.length === 0 && invoice.deposit_percent != null ? (() => {
+            const depositAmt = +(totals.total * Number(invoice.deposit_percent) / 100).toFixed(2);
+            return (
+              <View style={styles.notesBlock} wrap={false}>
+                <Text style={styles.notesLabel}>PAYMENTS</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, marginTop: 4 }}>
+                  <Text style={{ fontSize: 9, color: C.slate }}>
+                    {Number(invoice.deposit_percent)}% Deposit
+                  </Text>
+                  <Text style={{ fontSize: 9, fontWeight: 700, color: C.ink }}>{fmtRM(depositAmt)}</Text>
+                </View>
+              </View>
+            );
+          })() : null}
+
+          {payments.length > 0 ? (() => {
+            const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
+            const outstanding = Math.max(0, totals.total - paid);
+            return (
+              <View style={styles.notesBlock} wrap={false}>
+                <Text style={styles.notesLabel}>PAYMENTS</Text>
+                <View style={{ marginTop: 4 }}>
+                  {payments.map((p, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 9, color: C.slate }}>
+                        {fmtDate(p.paid_on)}
+                        {p.label ? ` · ${p.label}` : ''}
+                        {p.method ? ` · ${p.method}` : ''}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: 700, color: C.ink }}>{fmtRM(Number(p.amount))}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingTop: 4, borderTopWidth: 0.5, borderTopColor: C.border }}>
+                  <Text style={{ fontSize: 9, color: C.slate, fontWeight: 700 }}>Paid</Text>
+                  <Text style={{ fontSize: 9, color: C.ink, fontWeight: 700 }}>{fmtRM(paid)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 9, color: C.slate, fontWeight: 700 }}>Outstanding</Text>
+                  <Text style={{ fontSize: 9, color: outstanding > 0 ? '#C0321A' : C.ink, fontWeight: 700 }}>{fmtRM(outstanding)}</Text>
+                </View>
+              </View>
+            );
+          })() : null}
 
           {invoice.notes ? (
             <View style={styles.notesBlock} wrap={false}>

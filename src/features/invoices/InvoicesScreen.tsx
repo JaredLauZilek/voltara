@@ -3,10 +3,11 @@ import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
-import { formatRM, formatRMShort } from '@/shared/lib/format';
+import { formatRM, formatRMShort, monthKey } from '@/shared/lib/format';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from './hooks';
+import { useAllInvoicePayments } from './payments/hooks';
 import { InvoiceModal } from './InvoiceModal';
 import { ShareModal } from '@/shared/components/ShareModal';
 import { InvoiceEmailModal } from './email';
@@ -15,11 +16,12 @@ import { INVOICE_STATUSES } from './types';
 import type { Invoice, InvoiceInsert } from './types';
 
 const STATUS_COLORS: Record<Invoice['status'], { bg: string; color: string }> = {
-  Draft:     { bg: '#F3F3F3', color: '#767B77' },
-  Sent:      { bg: '#E3F0FF', color: '#1A62C0' },
-  Paid:      { bg: '#E4F3E3', color: '#1B512D' },
-  Overdue:   { bg: '#FDEAEA', color: '#C0321A' },
-  Cancelled: { bg: '#FFF0E0', color: '#B45309' },
+  Draft:            { bg: '#F3F3F3', color: '#767B77' },
+  Sent:             { bg: '#E3F0FF', color: '#1A62C0' },
+  'Partially Paid': { bg: '#FFF8E1', color: '#B07D00' },
+  Paid:             { bg: '#E4F3E3', color: '#1B512D' },
+  Overdue:          { bg: '#FDEAEA', color: '#C0321A' },
+  Cancelled:        { bg: '#FFF0E0', color: '#B45309' },
 };
 
 export function InvoicesScreen() {
@@ -54,14 +56,24 @@ export function InvoicesScreen() {
 
   const pagination = usePagination(filtered);
 
-  const totalCollected = invoices
-    .filter((i) => i.status === 'Paid')
-    .reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax).total, 0);
+  const { data: allPayments = [] } = useAllInvoicePayments();
+  const paidById = new Map<string, number>();
+  for (const p of allPayments) paidById.set(p.invoice_id, (paidById.get(p.invoice_id) ?? 0) + Number(p.amount));
+
+  const thisMonth = monthKey(new Date());
+  const collectedThisMonth = allPayments
+    .filter((p) => p.paid_on.startsWith(thisMonth))
+    .reduce((s, p) => s + Number(p.amount), 0);
+
+  const outstanding = invoices
+    .filter((i) => i.status !== 'Cancelled' && i.status !== 'Draft')
+    .reduce((s, i) => {
+      const total = calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total;
+      const paid = paidById.get(i.id) ?? 0;
+      return s + Math.max(0, total - paid);
+    }, 0);
+
   const overdueCount = invoices.filter((i) => i.status === 'Overdue').length;
-  const avgValue =
-    invoices.length === 0
-      ? 0
-      : invoices.reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax).total, 0) / invoices.length;
 
   const handleSave = (row: InvoiceInsert) => {
     if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
@@ -75,8 +87,8 @@ export function InvoicesScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <KPICard label="Total Invoices" value={invoices.length} sub="All time" accent />
-        <KPICard label="Collected" value={formatRMShort(totalCollected)} sub="Paid invoices" />
-        <KPICard label="Avg Invoice Value" value={formatRM(Math.round(avgValue))} sub="Across all" />
+        <KPICard label="Outstanding" value={formatRMShort(outstanding)} sub="Unpaid + partially paid" />
+        <KPICard label="Collected this month" value={formatRM(Math.round(collectedThisMonth))} sub="Sum of payments received" />
         <KPICard label="Overdue" value={overdueCount} sub="Requires follow-up" />
       </div>
 
@@ -116,7 +128,7 @@ export function InvoicesScreen() {
           </thead>
           <tbody>
             {pagination.pageItems.map((inv) => {
-              const total = calcInvoiceTotals(inv.line_items, inv.discount, inv.tax).total;
+              const total = calcInvoiceTotals(inv.line_items, inv.discount, inv.tax, inv.discount_mode).total;
               const customer = customerById.get(inv.customer_id);
               const itemSummary = inv.line_items
                 .map((li) => `${li.qty}× ${productById.get(li.product_id)?.name ?? li.product_id}`)

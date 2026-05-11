@@ -25,6 +25,16 @@ export interface PlaceholderContext {
     valid_to: string;
     total: string;         // pre-formatted with currency prefix
     currency: string;
+    /**
+     * Optional payment status, rendered below Total in the email summary.
+     * - 'deposit': customer hasn't paid yet but a deposit % has been set
+     * - 'partial': one or more payments have been recorded, balance owing
+     * - 'paid': fully settled
+     */
+    payment_summary?:
+      | { kind: 'deposit'; deposit_percent: number; deposit_amount: string }
+      | { kind: 'partial'; paid: string; outstanding: string }
+      | { kind: 'paid'; paid: string };
   };
   company: {
     name: string;

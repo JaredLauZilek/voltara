@@ -1,4 +1,4 @@
-import { supabase, stripId } from '@/shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import type { Product, ProductInsert, ProductUpdate } from './types';
 
 export async function listProducts(): Promise<Product[]> {
@@ -8,7 +8,10 @@ export async function listProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(row: ProductInsert): Promise<Product> {
-  const { data, error } = await supabase.from('products').insert(stripId(row)).select().single();
+  // Products are the only entity where the client owns the id (SKU) — the
+  // user names it. Other tables strip the id and let the DB trigger assign;
+  // here we keep it and let the products id-guard trigger validate.
+  const { data, error } = await supabase.from('products').insert(row).select().single();
   if (error) throw error;
   return data;
 }

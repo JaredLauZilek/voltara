@@ -11,6 +11,7 @@ import { INVOICE_STATUSES } from './types';
 import type { Invoice, InvoiceInsert } from './types';
 import { calcInvoiceTotals } from './totals';
 import { InvoicePrintModal } from './pdf/InvoicePrintModal';
+import { PaymentsSection } from './payments/PaymentsSection';
 
 interface Props {
   invoice: Invoice | null;
@@ -40,11 +41,12 @@ const labelStyle: React.CSSProperties = {
 };
 
 const STATUS_PILL: Record<string, { bg: string; color: string }> = {
-  Draft:     { bg: '#F3F3F3', color: '#767B77' },
-  Sent:      { bg: '#E3F0FF', color: '#1A62C0' },
-  Paid:      { bg: '#E4F3E3', color: '#1B512D' },
-  Overdue:   { bg: '#FDEAEA', color: '#C0321A' },
-  Cancelled: { bg: '#FFF0E0', color: '#B45309' },
+  Draft:            { bg: '#F3F3F3', color: '#767B77' },
+  Sent:             { bg: '#E3F0FF', color: '#1A62C0' },
+  'Partially Paid': { bg: '#FFF8E1', color: '#B07D00' },
+  Paid:             { bg: '#E4F3E3', color: '#1B512D' },
+  Overdue:          { bg: '#FDEAEA', color: '#C0321A' },
+  Cancelled:        { bg: '#FFF0E0', color: '#B45309' },
 };
 
 export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDelete }: Props) {
@@ -64,11 +66,13 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
       quote_id: null,
       line_items: [],
       discount: 0,
+      discount_mode: 'percent',
       tax: 0,
       notes: null,
       status: 'Draft',
       issue_date: todayISO(),
       due_date: todayISO(),
+      deposit_percent: null,
     }
   );
 
@@ -100,7 +104,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
     }));
   };
 
-  const totals = calcInvoiceTotals(form.line_items, form.discount, form.tax);
+  const totals = calcInvoiceTotals(form.line_items, form.discount, form.tax, form.discount_mode ?? 'percent');
 
   const addItem = () => {
     const first = products[0];
@@ -228,8 +232,16 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
             type="date"
             value={form.due_date}
             onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              borderColor: form.due_date && form.due_date < form.issue_date ? C.error : C.border,
+            }}
           />
+          {form.due_date && form.due_date < form.issue_date && (
+            <div style={{ fontSize: 11, color: C.error, marginTop: 4, fontWeight: 600 }}>
+              Due date can't be before the issue date.
+            </div>
+          )}
         </div>
       </div>
 
@@ -259,7 +271,16 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
                   onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
                   style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
                 />
-                <div style={{ fontSize: 12, color: C.slate }}>RM {item.unit_price_snapshot.toLocaleString()}</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.unit_price_snapshot}
+                  onChange={(e) =>
+                    updateItem(i, { unit_price_snapshot: parseFloat(e.target.value) || 0 })
+                  }
+                  style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'right' }}
+                />
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>RM {lineTotal.toLocaleString()}</div>
                 <button
                   onClick={() => removeItem(i)}
@@ -404,15 +425,39 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: C.slate }}>Discount</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'inline-flex', border: `1px solid ${C.border}`, borderRadius: 6, overflow: 'hidden' }}>
+                {(['percent', 'amount'] as const).map((mode) => {
+                  const active = (form.discount_mode ?? 'percent') === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, discount_mode: mode, discount: 0 }))}
+                      style={{
+                        padding: '3px 8px',
+                        border: 'none',
+                        background: active ? C.green : C.white,
+                        color: active ? C.white : C.slate,
+                        fontFamily: 'Figtree',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {mode === 'percent' ? '%' : 'RM'}
+                    </button>
+                  );
+                })}
+              </div>
               <input
                 type="number"
                 min="0"
-                max="100"
+                max={form.discount_mode === 'amount' ? undefined : 100}
+                step={form.discount_mode === 'amount' ? '0.01' : '1'}
                 value={form.discount}
                 onChange={(e) => setForm((f) => ({ ...f, discount: parseFloat(e.target.value) || 0 }))}
-                style={{ width: 50, padding: '4px 8px', borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, outline: 'none', textAlign: 'center' }}
+                style={{ width: form.discount_mode === 'amount' ? 80 : 50, padding: '4px 8px', borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, outline: 'none', textAlign: 'center' }}
               />
-              <span style={{ fontSize: 12, color: C.slate }}>%</span>
               <span style={{ fontSize: 12, color: '#C0321A' }}>− RM {totals.discountAmt.toLocaleString()}</span>
             </div>
           </div>
@@ -477,6 +522,14 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
         </div>
       </div>
 
+      {!isNew && invoice && (
+        <PaymentsSection
+          invoice={invoice}
+          depositPercent={form.deposit_percent ?? null}
+          onDepositPercentChange={(v) => setForm((f) => ({ ...f, deposit_percent: v }))}
+        />
+      )}
+
       <div>
         <label style={labelStyle}>Notes</label>
         <textarea
@@ -530,10 +583,12 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           Cancel
         </button>
         {(() => {
+          const dueBeforeIssue = !!form.issue_date && !!form.due_date && form.due_date < form.issue_date;
           const invalid =
             !form.customer_id ||
             form.line_items.length === 0 ||
-            (isNew && !form.quote_id);
+            (isNew && !form.quote_id) ||
+            dueBeforeIssue;
           const blocked = invalid || isSaving;
           return (
             <button

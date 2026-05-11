@@ -72,7 +72,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'purchaseorders', icon: ShoppingCart,  label: 'Purchase Orders' },
       { id: 'invoices',       icon: ReceiptText,   label: 'Invoices' },
-      { id: 'bills',          icon: Wallet,        label: 'Bills (COGS)' },
+      { id: 'bills',          icon: Wallet,        label: 'Bills' },
       { id: 'expenses',       icon: CreditCard,    label: 'Expenses' },
     ],
   },
@@ -120,7 +120,7 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   salesorders:    'Sales Orders',
   salesmanagers:  'Sales Managers',
   purchaseorders: 'Purchase Orders',
-  bills:          'Bills (COGS)',
+  bills:          'Bills',
   expenses:       'Expenses',
   products:       'Inventory & Products',
   suppliers:      'Suppliers & Vendors',

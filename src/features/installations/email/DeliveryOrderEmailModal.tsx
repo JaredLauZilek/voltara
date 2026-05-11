@@ -49,7 +49,7 @@ export function DeliveryOrderEmailModal({ installation, onClose }: Props) {
         date:      fmtDate(installation.scheduled),
         due_date:  '—',
         valid_to:  '—',
-        total:     quote ? formatRM(total) : '—',
+        total:     quote ? formatRM(total, 2) : '—',
         currency:  'RM',
       },
       company: {

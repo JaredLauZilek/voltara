@@ -39,7 +39,7 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<ProductInsert>(
     product ?? {
-      id: isService ? `SVC-${String(Date.now()).slice(-5)}` : `SKU-${String(Date.now()).slice(-5)}`,
+      id: '',
       name: '',
       category: isService ? 'Service' : 'Charger Units',
       is_service: isService,
@@ -54,6 +54,8 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
   );
 
   const m = margin(form as Product);
+  const trimmedId = form.id.trim();
+  const canSave = !!form.name.trim() && (!isNew || !!trimmedId);
 
   const modalTitle = isNew
     ? (isService ? 'New Service' : 'New Product')
@@ -62,7 +64,7 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
   return (
     <Modal title={modalTitle} subtitle={!isNew ? form.id : undefined} onClose={onClose}>
       {isService && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#E3F0FF', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#1A62C0' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.infoBg, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: C.info }}>
           ◆ Service — always available, no stock tracking
         </div>
       )}
@@ -74,7 +76,18 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
         </div>
         <div>
           <label style={labelStyle}>{isService ? 'Service ID' : 'SKU'}</label>
-          <input value={form.id} onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))} style={inputStyle} disabled={!isNew} />
+          <input
+            value={form.id}
+            onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
+            style={inputStyle}
+            disabled={!isNew}
+            placeholder={isNew ? (isService ? 'e.g. SVC-MAINT-ANNUAL' : 'e.g. EVC-7KW-WB') : undefined}
+          />
+          {isNew && (
+            <div style={{ fontSize: 11, color: C.slate, marginTop: 4 }}>
+              You choose this — it appears on quotes, invoices, and stock reports. Cannot be changed after save.
+            </div>
+          )}
         </div>
 
         {!isService && (
@@ -164,12 +177,12 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
                 This is permanent and cannot be undone.
               </span>
               <button
                 onClick={() => onDelete(product.id)}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -183,7 +196,7 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${C.errorBg}`, background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>
@@ -196,8 +209,20 @@ export function ProductModal({ product, isService: isServiceProp, onClose, onSav
           Cancel
         </button>
         <button
-          onClick={() => onSave(form)}
-          style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: C.green, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          onClick={() => onSave({ ...form, id: trimmedId })}
+          disabled={!canSave}
+          style={{
+            padding: '10px 24px',
+            borderRadius: 10,
+            border: 'none',
+            background: canSave ? C.green : C.slate,
+            color: C.white,
+            fontFamily: 'Figtree',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: canSave ? 'pointer' : 'not-allowed',
+            opacity: canSave ? 1 : 0.6,
+          }}
         >
           {isNew ? (isService ? 'Create Service' : 'Create Product') : 'Save Changes'}
         </button>

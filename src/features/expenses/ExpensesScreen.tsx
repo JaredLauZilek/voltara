@@ -3,7 +3,7 @@ import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
-import { formatRM, formatRMShort, todayISO } from '@/shared/lib/format';
+import { formatRM, formatRMShort, todayISO, monthKey } from '@/shared/lib/format';
 import {
   useExpenses,
   useCreateExpense,
@@ -93,7 +93,7 @@ export function ExpensesScreen() {
 
   // KPI: spent this month (Paid one-off in month + Paid periods in month)
   const today = new Date();
-  const monthKey = today.toISOString().slice(0, 7);
+  const thisMonth = monthKey(today);
   const yearKey = String(today.getFullYear());
 
   let spentThisMonth = 0;
@@ -103,12 +103,12 @@ export function ExpensesScreen() {
   for (const e of expenses) {
     if (e.recurrence === 'None') {
       if (e.status === 'Pending') pendingCount += 1;
-      if (e.status === 'Paid' && e.paid_on?.slice(0, 7) === monthKey) spentThisMonth += Number(e.amount);
+      if (e.status === 'Paid' && e.paid_on?.slice(0, 7) === thisMonth) spentThisMonth += Number(e.amount);
       if (e.status === 'Paid' && e.paid_on?.slice(0, 4) === yearKey) ytdSpent += Number(e.amount);
     } else {
       for (const p of e.periods) {
         if (p.status === 'Pending') pendingCount += 1;
-        if (p.status === 'Paid' && p.period === monthKey) spentThisMonth += Number(e.amount);
+        if (p.status === 'Paid' && p.period === thisMonth) spentThisMonth += Number(e.amount);
         if (p.status === 'Paid' && p.period.slice(0, 4) === yearKey) ytdSpent += Number(e.amount);
       }
     }

@@ -6,6 +6,7 @@ import { useProducts } from '@/features/products';
 import { useDesign } from '@/features/form-designs';
 import { pdfFilename } from '@/shared/lib/format';
 import { InvoicePdf } from './InvoicePdf';
+import { useInvoicePayments } from '../payments/hooks';
 import type { Invoice } from '../types';
 
 interface Props {
@@ -17,6 +18,7 @@ export function InvoicePrintModal({ invoice, onClose }: Props) {
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { profile, design, isLoading } = useDesign('invoice');
+  const { data: payments = [] } = useInvoicePayments(invoice.id);
 
   const customer = customers.find((c) => c.id === invoice.customer_id) ?? null;
 
@@ -38,9 +40,10 @@ export function InvoicePrintModal({ invoice, onClose }: Props) {
         products={products}
         profile={profile}
         design={design}
+        payments={payments}
       />
     );
-  }, [ready, invoice, customer, products, profile, design]);
+  }, [ready, invoice, customer, products, profile, design, payments]);
 
   const filename = pdfFilename(invoice.id, customer?.name);
 

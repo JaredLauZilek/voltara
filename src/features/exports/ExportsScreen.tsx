@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { useInvoices } from '@/features/invoices';
+import { useAllInvoicePayments } from '@/features/invoices/payments/hooks';
 import { useBills } from '@/features/bills';
 import { useExpenses } from '@/features/expenses';
 import { usePurchaseOrders } from '@/features/purchase-orders';
@@ -41,6 +42,7 @@ const inputStyle: React.CSSProperties = {
 
 export function ExportsScreen() {
   const { data: invoices = [] } = useInvoices();
+  const { data: invoicePayments = [] } = useAllInvoicePayments();
   const { data: bills = [] } = useBills();
   const { data: expenses = [] } = useExpenses();
   const { data: pos = [] } = usePurchaseOrders();
@@ -91,7 +93,7 @@ export function ExportsScreen() {
       const blob = await buildExportZip(
         {
           period,
-          invoices, bills, expenses, pos, quotes,
+          invoices, invoicePayments, bills, expenses, pos, quotes,
           customers, suppliers, products,
           invoiceProfile: invoiceDesign.profile!,
           invoiceDesign: invoiceDesign.design!,

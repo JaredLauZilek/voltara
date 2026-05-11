@@ -20,6 +20,16 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** ISO month key like '2026-05'. */
+export const monthKey = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+/** Short month label like 'May' for chart axes. */
+export const monthLabel = (key: string): string => {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'short' });
+};
+
 /**
  * Build the default download filename for a document PDF:
  *   "QO-202604-0001 (Siemens Sdn Bhd).pdf"

@@ -7,6 +7,7 @@ import { useProducts } from '@/features/products';
 import { formatRM, pdfFilename } from '@/shared/lib/format';
 import { InvoicePdf } from '../pdf/InvoicePdf';
 import { calcInvoiceTotals } from '../totals';
+import { useInvoicePayments } from '../payments/hooks';
 import type { Invoice } from '../types';
 import type { PlaceholderContext } from '@/features/email-designs';
 
@@ -23,6 +24,7 @@ const safeId = (id: string): string => id.replace(/[^a-zA-Z0-9._-]/g, '_');
 export function InvoiceEmailModal({ invoice, onClose }: Props) {
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
+  const { data: payments = [] } = useInvoicePayments(invoice.id);
   const companyProfileQ = useCompanyProfile();
   const formDesign = useDesign('invoice');
 
@@ -30,7 +32,24 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
 
   const ctx = useMemo<PlaceholderContext>(() => {
     const company = companyProfileQ.data;
-    const total = calcInvoiceTotals(invoice.line_items, invoice.discount, invoice.tax).total;
+    const total = calcInvoiceTotals(invoice.line_items, invoice.discount, invoice.tax, invoice.discount_mode).total;
+    const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
+    const outstanding = Math.max(0, total - paid);
+
+    let payment_summary: PlaceholderContext['doc']['payment_summary'];
+    if (payments.length === 0 && invoice.deposit_percent != null) {
+      const depositAmt = +(total * Number(invoice.deposit_percent) / 100).toFixed(2);
+      payment_summary = {
+        kind: 'deposit',
+        deposit_percent: Number(invoice.deposit_percent),
+        deposit_amount: formatRM(depositAmt, 2),
+      };
+    } else if (payments.length > 0 && outstanding > 0.005) {
+      payment_summary = { kind: 'partial', paid: formatRM(paid, 2), outstanding: formatRM(outstanding, 2) };
+    } else if (payments.length > 0) {
+      payment_summary = { kind: 'paid', paid: formatRM(paid, 2) };
+    }
+
     return {
       customer: {
         name:         customer?.name ?? '',
@@ -45,8 +64,9 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
         date:      fmtDate(invoice.issue_date),
         due_date:  fmtDate(invoice.due_date),
         valid_to:  '—',
-        total:     formatRM(total),
+        total:     formatRM(total, 2),
         currency:  'RM',
+        payment_summary,
       },
       company: {
         name:    company?.company_name ?? 'Voltara Sdn Bhd',
@@ -56,7 +76,7 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
         website: company?.website ?? '',
       },
     };
-  }, [invoice, customer, companyProfileQ.data]);
+  }, [invoice, customer, payments, companyProfileQ.data]);
 
   const buildPdfBlob = async (): Promise<Blob> => {
     if (!companyProfileQ.data || !formDesign.design) {
@@ -69,6 +89,7 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
         products,
         profile: companyProfileQ.data,
         design: formDesign.design,
+        payments,
       }),
     ).toBlob();
   };

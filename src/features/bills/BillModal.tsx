@@ -78,7 +78,8 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
     }));
   };
 
-  const canSave = form.amount > 0 && !!form.supplier_id;
+  const dueBeforeBill = !!form.due_date && form.due_date < form.bill_date;
+  const canSave = form.amount > 0 && !!form.supplier_id && !dueBeforeBill;
 
   return (
     <Modal title={isNew ? 'New Bill' : bill.id} onClose={onClose}>
@@ -90,7 +91,17 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
         </div>
         <div>
           <label style={labelStyle}>Due Date</label>
-          <input type="date" value={form.due_date ?? ''} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value || null }))} style={inputStyle} />
+          <input
+            type="date"
+            value={form.due_date ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value || null }))}
+            style={{ ...inputStyle, borderColor: dueBeforeBill ? C.error : C.border }}
+          />
+          {dueBeforeBill && (
+            <div style={{ fontSize: 11, color: C.error, marginTop: 4, fontWeight: 600 }}>
+              Due date can't be before the bill date.
+            </div>
+          )}
         </div>
       </div>
 

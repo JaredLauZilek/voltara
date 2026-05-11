@@ -58,6 +58,16 @@ export function renderEmailHtml({ design, profile, ctx, brandColor, logoDataUrl 
     ? `<img src="${logoDataUrl}" alt="${escapeHtml(ctx.company.name)}" style="max-height:48px;display:block;margin:0 0 16px 0;">`
     : `<div style="font-size:18px;font-weight:700;color:${accent};margin:0 0 16px 0;">${escapeHtml(ctx.company.name)}</div>`;
 
+  const ps = ctx.doc.payment_summary;
+  const paymentRows = !ps
+    ? ''
+    : ps.kind === 'deposit'
+      ? `<div style="font-size:13px;font-weight:600;color:#1a1a1a;margin-top:6px;">${ps.deposit_percent}% Deposit: ${escapeHtml(ps.deposit_amount)}</div>`
+      : ps.kind === 'partial'
+        ? `<div style="font-size:13px;font-weight:600;color:#1B512D;margin-top:6px;">Paid: ${escapeHtml(ps.paid)}</div>
+           <div style="font-size:13px;font-weight:700;color:#C0321A;margin-top:2px;">Outstanding: ${escapeHtml(ps.outstanding)}</div>`
+        : `<div style="font-size:13px;font-weight:700;color:#1B512D;margin-top:6px;">Paid in full: ${escapeHtml(ps.paid)}</div>`;
+
   const summaryBlock = design.show_doc_summary
     ? `
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:16px 0 20px 0;background:#F9F9F9;border-radius:10px;">
@@ -67,6 +77,7 @@ export function renderEmailHtml({ design, profile, ctx, brandColor, logoDataUrl 
             <div style="font-size:16px;font-weight:700;color:${accent};margin-top:2px;">${escapeHtml(ctx.doc.id)}</div>
             <div style="font-size:12px;color:#767B77;margin-top:4px;">Date: ${escapeHtml(ctx.doc.date)}</div>
             <div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-top:8px;">Total: ${escapeHtml(ctx.doc.total)}</div>
+            ${paymentRows}
           </td>
         </tr>
       </table>`

@@ -162,10 +162,10 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
             type="email"
             value={form.email ?? ''}
             onChange={(e) => handleEmailChange(e.target.value)}
-            style={{ ...inputStyle, borderColor: emailError ? '#C0321A' : C.border }}
+            style={{ ...inputStyle, borderColor: emailError ? C.error : C.border }}
           />
           {emailError && (
-            <div style={{ fontSize: 11, color: '#C0321A', marginTop: 4 }}>{emailError}</div>
+            <div style={{ fontSize: 11, color: C.error, marginTop: 4 }}>{emailError}</div>
           )}
         </div>
 
@@ -186,11 +186,11 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
               value={phoneLocal}
               onChange={(e) => handlePhoneLocalChange(e.target.value)}
               placeholder="123456789"
-              style={{ ...inputStyle, borderColor: phoneError ? '#C0321A' : C.border }}
+              style={{ ...inputStyle, borderColor: phoneError ? C.error : C.border }}
             />
           </div>
           {phoneError && (
-            <div style={{ fontSize: 11, color: '#C0321A', marginTop: 4 }}>{phoneError}</div>
+            <div style={{ fontSize: 11, color: C.error, marginTop: 4 }}>{phoneError}</div>
           )}
         </div>
 
@@ -265,7 +265,7 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
         {!isNew && onDelete && (
           confirmDelete ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
                 This is permanent and cannot be undone.
               </span>
               <button
@@ -274,8 +274,8 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
                   padding: '8px 14px',
                   borderRadius: 10,
                   border: 'none',
-                  background: '#C0321A',
-                  color: '#fff',
+                  background: C.error,
+                  color: C.white,
                   fontFamily: 'Figtree',
                   fontSize: 13,
                   fontWeight: 700,
@@ -309,7 +309,7 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
                 borderRadius: 10,
                 border: '1px solid #FDEAEA',
                 background: 'transparent',
-                color: '#C0321A',
+                color: C.error,
                 fontFamily: 'Figtree',
                 fontSize: 13,
                 fontWeight: 600,

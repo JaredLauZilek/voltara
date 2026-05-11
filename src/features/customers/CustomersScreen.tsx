@@ -66,10 +66,17 @@ export function CustomersScreen() {
   const joinedDiff = newlyJoined - lastMonthJoined;
 
   const handleSave = (row: CustomerInsert) => {
+    // Strip view-only fields that leak in via CustomerWithStats — Supabase
+    // silently drops unknown columns and the update appears to succeed.
+    const { installs: _i, spend: _s, ...patch } = row as CustomerInsert & {
+      installs?: number;
+      spend?: number;
+    };
+    void _i; void _s;
     if (modal === 'new') {
-      createMut.mutate(row, { onSuccess: () => setModal(null) });
+      createMut.mutate(patch, { onSuccess: () => setModal(null) });
     } else if (modal && typeof modal !== 'string') {
-      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+      updateMut.mutate({ id: modal.id, patch }, { onSuccess: () => setModal(null) });
     }
   };
 
@@ -122,14 +129,14 @@ export function CustomersScreen() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, color: dateFrom ? '#1a1a1a' : C.slate, outline: 'none' }}
+              style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, color: dateFrom ? C.ink : C.slate, outline: 'none' }}
             />
             <span style={{ fontSize: 12, color: C.slate }}>—</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, color: dateTo ? '#1a1a1a' : C.slate, outline: 'none' }}
+              style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, color: dateTo ? C.ink : C.slate, outline: 'none' }}
             />
             {(dateFrom || dateTo) && (
               <button
@@ -144,15 +151,15 @@ export function CustomersScreen() {
       />
 
       {selected.size > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: '#1a1a1a', borderRadius: 12, color: C.white }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: C.ink, borderRadius: 12, color: C.white }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} selected</span>
           <button onClick={() => { setSelected(new Set()); setBulkConfirm(false); }} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Clear</button>
           {bulkConfirm ? (
             <>
-              <span style={{ fontSize: 12, color: '#FFAAAA', marginLeft: 'auto' }}>
+              <span style={{ fontSize: 12, color: C.errorBgSoft, marginLeft: 'auto' }}>
                 Permanently delete {selected.size} customer{selected.size > 1 ? 's' : ''}? This cannot be undone.
               </span>
-              <button onClick={handleBulkDelete} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#C0321A', color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={handleBulkDelete} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 Confirm Delete
               </button>
               <button onClick={() => setBulkConfirm(false)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'none', color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -160,7 +167,7 @@ export function CustomersScreen() {
               </button>
             </>
           ) : (
-            <button onClick={() => setBulkConfirm(true)} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: '1px solid #C0321A', background: 'transparent', color: '#FFAAAA', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setBulkConfirm(true)} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: `1px solid ${C.error}`, background: 'transparent', color: C.errorBgSoft, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               Delete Selected
             </button>
           )}
@@ -265,7 +272,7 @@ function CustomerRow({ c, selected, onToggle, onClick }: { c: CustomerWithStats;
           >
             {c.name[0]}
           </div>
-          <span style={{ fontWeight: 600, color: '#1a1a1a' }}>{c.name}</span>
+          <span style={{ fontWeight: 600, color: C.ink }}>{c.name}</span>
         </div>
       </td>
       <td style={{ padding: '13px 16px', color: C.slate }}>{c.email ?? '—'}</td>
