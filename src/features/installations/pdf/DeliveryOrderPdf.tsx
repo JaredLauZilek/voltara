@@ -129,13 +129,15 @@ const styles = StyleSheet.create({
 export function DeliveryOrderPdf({ installation, quote, customer, products, profile, design }: Props) {
   const accent = design.accent_color || profile.brand_color;
   const productById = new Map(products.map((p) => [p.id, p]));
-  const items = (quote?.line_items ?? []).map((li) => {
+  const overrides = installation.qty_overrides ?? {};
+  const items = (quote?.line_items ?? []).map((li, i) => {
     const p = productById.get(li.product_id);
+    const override = overrides[String(i)];
     return {
       sku: li.product_id ? (p?.id ?? li.product_id) : '—',
       name: li.product_id ? (p?.name ?? '—') : (li.description?.trim() || 'Custom item'),
       detail: li.product_id ? (li.description ?? p?.description ?? null) : null,
-      qty: li.qty,
+      qty: override ?? li.qty,
     };
   });
 

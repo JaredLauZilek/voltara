@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { PurchaseOrder, PurchaseOrderInsert, PurchaseOrderUpdate } from './types';
 
 export async function listPurchaseOrders(): Promise<PurchaseOrder[]> {
@@ -11,7 +11,7 @@ export async function listPurchaseOrders(): Promise<PurchaseOrder[]> {
 }
 
 export async function createPurchaseOrder(row: PurchaseOrderInsert): Promise<PurchaseOrder> {
-  const { data, error } = await supabase.from('purchase_orders').insert(row).select().single();
+  const { data, error } = await supabase.from('purchase_orders').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

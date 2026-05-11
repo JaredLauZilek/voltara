@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Product, ProductInsert, ProductUpdate } from './types';
 
 export async function listProducts(): Promise<Product[]> {
@@ -8,7 +8,7 @@ export async function listProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(row: ProductInsert): Promise<Product> {
-  const { data, error } = await supabase.from('products').insert(row).select().single();
+  const { data, error } = await supabase.from('products').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

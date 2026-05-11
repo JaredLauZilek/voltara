@@ -5,6 +5,7 @@ import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useSalesManagers } from '@/features/sales-managers';
 import { useDesign } from '@/features/form-designs';
+import { pdfFilename } from '@/shared/lib/format';
 import { QuotePdf } from './QuotePdf';
 import type { Quote } from '../types';
 
@@ -47,7 +48,7 @@ export function QuotePrintModal({ quote, onClose }: Props) {
     );
   }, [ready, quote, customer, products, salesManager, profile, design]);
 
-  const filename = `${quote.type}-${quote.id}.pdf`;
+  const filename = pdfFilename(quote.id, customer?.name);
 
   return (
     <div

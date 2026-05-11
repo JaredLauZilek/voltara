@@ -155,6 +155,66 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
         </select>
       </div>
 
+      {/* Inventory preview — mirrors the pendingChange flow in SalesScreen.
+          Shows the items about to be deducted (when transitioning to Case Won)
+          or restored (when leaving Case Won). Disappears after save because
+          quote.status then matches form.status. */}
+      {(() => {
+        if (!quote || quote.status === form.status) return null;
+        const isDeducting = form.status === 'Case Won';
+        const isRestoring = quote.status === 'Case Won' && !isDeducting;
+        if (!isDeducting && !isRestoring) return null;
+        const accentBg = isDeducting ? C.honeydew : '#FFF8E1';
+        const accentText = isDeducting ? C.green : '#B07D00';
+        const label = isDeducting
+          ? 'Saving will deduct the following from inventory:'
+          : 'Saving will restore the following to inventory:';
+        return (
+          <div style={{ background: accentBg, borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: accentText, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {label}
+            </div>
+            <div style={{ background: C.white, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: C.seasalt }}>
+                    {['Product', 'SKU', 'Qty'].map((h) => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.border}` }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {quote.line_items.map((li, i) => {
+                    const product = products.find((p) => p.id === li.product_id);
+                    const isService = product?.is_service ?? false;
+                    return (
+                      <tr key={i} style={{ borderBottom: `1px solid ${C.divider}` }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>
+                          {product?.name ?? li.product_id}
+                          {isService && (
+                            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: C.slate, background: C.divider, padding: '2px 6px', borderRadius: 6 }}>
+                              SERVICE
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '9px 12px', color: C.slate, fontSize: 12 }}>
+                          {li.product_id}
+                        </td>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: isService ? C.slate : accentText }}>
+                          {isService ? '—' : `${isDeducting ? '−' : '+'}${li.qty}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{ background: C.seasalt, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Customer</div>
         <CustomerPicker

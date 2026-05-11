@@ -93,11 +93,13 @@ export interface Database {
           scheduled: string;
           status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue' | 'Cancelled';
           notes: string | null;
+          qty_overrides: Record<string, number>;
         };
-        Insert: Omit<Database['public']['Tables']['installations']['Row'], 'product_id' | 'quote_id' | 'notes'> & {
+        Insert: Omit<Database['public']['Tables']['installations']['Row'], 'product_id' | 'quote_id' | 'notes' | 'qty_overrides'> & {
           product_id?: string | null;
           quote_id?: string | null;
           notes?: string | null;
+          qty_overrides?: Record<string, number>;
         };
         Update: Partial<Database['public']['Tables']['installations']['Insert']>;
       };

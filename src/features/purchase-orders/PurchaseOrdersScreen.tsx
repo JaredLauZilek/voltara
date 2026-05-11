@@ -1,20 +1,25 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
+import { pdf } from '@react-pdf/renderer';
 import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
-import { formatRMShort } from '@/shared/lib/format';
+import { formatRMShort, pdfFilename } from '@/shared/lib/format';
 import { useSuppliers } from '@/features/suppliers';
+import { useProducts } from '@/features/products';
+import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { usePurchaseOrders, useCreatePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from './hooks';
 import { POModal } from './POModal';
-import { ShareModal } from '@/shared/components/ShareModal';
-import { POEmailModal } from './email';
+import { POPdf } from './pdf/POPdf';
 import { PO_STATUSES, calcPOTotal } from './types';
 import type { PurchaseOrder, PurchaseOrderInsert } from './types';
 
 export function PurchaseOrdersScreen() {
   const { data: allPos = [] } = usePurchaseOrders();
   const { data: suppliers = [] } = useSuppliers();
+  const { data: products = [] } = useProducts();
+  const companyProfileQ = useCompanyProfile();
+  const formDesign = useDesign('purchase_order');
   const createMut = useCreatePurchaseOrder();
   const updateMut = useUpdatePurchaseOrder();
   const deleteMut = useDeletePurchaseOrder();
@@ -26,8 +31,34 @@ export function PurchaseOrdersScreen() {
   const [filterStatus, setFilterStatus] = useState<'All' | PurchaseOrder['status']>('All');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<PurchaseOrder | 'new' | null>(null);
-  const [sharePo, setSharePo] = useState<PurchaseOrder | null>(null);
-  const [emailPo, setEmailPo] = useState<PurchaseOrder | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownloadPdf = async (p: PurchaseOrder) => {
+    if (!companyProfileQ.data || !formDesign.design) return;
+    setDownloadingId(p.id);
+    try {
+      const supplier = supplierById.get(p.supplier_id ?? '') ?? null;
+      const blob = await pdf(
+        createElement(POPdf, {
+          po: p,
+          supplier,
+          products,
+          profile: companyProfileQ.data,
+          design: formDesign.design,
+        }),
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = pdfFilename(p.id, supplier?.name);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // Always resolve the modal's PO against the latest query data so that after
   // a save (which invalidates the query) Print PDF renders fresh notes/totals.
@@ -126,22 +157,24 @@ export function PurchaseOrdersScreen() {
                   </td>
                   <td style={{ padding: '13px 16px' }} onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setSharePo(p)}
-                      title="Share this purchase order"
+                      onClick={() => handleDownloadPdf(p)}
+                      disabled={downloadingId === p.id || !companyProfileQ.data || !formDesign.design}
+                      title="Download this purchase order as PDF"
                       style={{
                         padding: '5px 10px',
                         borderRadius: 8,
-                        border: `1px solid ${C.border}`,
-                        background: C.white,
+                        border: `1px solid ${C.green}`,
+                        background: 'transparent',
                         color: C.green,
                         fontFamily: 'Figtree',
                         fontSize: 12,
                         fontWeight: 700,
-                        cursor: 'pointer',
+                        cursor: downloadingId === p.id ? 'wait' : 'pointer',
                         whiteSpace: 'nowrap',
+                        opacity: downloadingId === p.id ? 0.6 : 1,
                       }}
                     >
-                      ↗ Share
+                      {downloadingId === p.id ? 'Generating…' : '⤓ PDF'}
                     </button>
                   </td>
                 </tr>
@@ -173,43 +206,6 @@ export function PurchaseOrdersScreen() {
         />
       )}
 
-      {sharePo && (() => {
-        const supplier = supplierById.get(sharePo.supplier_id ?? '');
-        const phone = supplier?.phone ?? null;
-        return (
-          <ShareModal
-            title="Share purchase order"
-            subtitle={sharePo.id}
-            recipient={{
-              name: supplier?.name ?? sharePo.supplier_id ?? '—',
-              sub: supplier?.category ?? undefined,
-            }}
-            methods={[
-              {
-                id: 'whatsapp',
-                icon: '◐',
-                label: 'WhatsApp',
-                hint: phone ? `Send to ${phone} (coming soon)` : 'Supplier has no phone on file',
-                enabled: false,
-              },
-              {
-                id: 'email',
-                icon: '✉',
-                label: 'Email',
-                hint: supplier?.email ? `Send to ${supplier.email} via Resend` : 'Supplier has no email on file',
-                enabled: !!supplier?.email,
-                onClick: () => { const p = sharePo; setSharePo(null); setEmailPo(p); },
-              },
-              { id: 'copy_link', icon: '⧉', label: 'Copy Link', hint: 'Coming soon',                    enabled: false },
-            ]}
-            onClose={() => setSharePo(null)}
-          />
-        );
-      })()}
-
-      {emailPo && (
-        <POEmailModal po={emailPo} onClose={() => setEmailPo(null)} />
-      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { C } from '@/shared/tokens';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useDesign } from '@/features/form-designs';
+import { pdfFilename } from '@/shared/lib/format';
 import { InvoicePdf } from './InvoicePdf';
 import type { Invoice } from '../types';
 
@@ -41,7 +42,7 @@ export function InvoicePrintModal({ invoice, onClose }: Props) {
     );
   }, [ready, invoice, customer, products, profile, design]);
 
-  const filename = `Invoice-${invoice.id}.pdf`;
+  const filename = pdfFilename(invoice.id, customer?.name);
 
   return (
     <div

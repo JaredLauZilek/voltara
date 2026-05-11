@@ -5,6 +5,7 @@ import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useQuotes } from '@/features/sales';
 import { useDesign } from '@/features/form-designs';
+import { pdfFilename } from '@/shared/lib/format';
 import { DeliveryOrderPdf } from './DeliveryOrderPdf';
 import type { Installation } from '../types';
 
@@ -46,7 +47,7 @@ export function DeliveryOrderPrintModal({ installation, onClose }: Props) {
     );
   }, [ready, installation, quote, customer, products, profile, design]);
 
-  const filename = `Delivery-Order-${installation.id}.pdf`;
+  const filename = pdfFilename(installation.id, customer?.name);
 
   return (
     <div

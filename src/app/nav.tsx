@@ -1,6 +1,28 @@
 // The ONLY file that knows the full list of features.
 // Adding a new feature = add an entry here and a matching entry to routes.ts.
 
+import {
+  LayoutDashboard,
+  Wrench,
+  ShoppingCart,
+  ReceiptText,
+  Wallet,
+  CreditCard,
+  Users,
+  TrendingUp,
+  ClipboardList,
+  UserCog,
+  Package,
+  Truck,
+  Megaphone,
+  LineChart,
+  LayoutTemplate,
+  Mail,
+  Download,
+  Activity,
+  type LucideIcon,
+} from 'lucide-react';
+
 export type ScreenId =
   | 'overview'
   | 'invoices'
@@ -23,7 +45,7 @@ export type ScreenId =
 
 export interface NavEntry {
   id: ScreenId;
-  icon: string;
+  icon: LucideIcon;
   label: string;
 }
 
@@ -36,54 +58,54 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: null,
     items: [
-      { id: 'overview', icon: '⊞', label: 'Overview' },
+      { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { id: 'installations', icon: '◎', label: 'Installations' },
+      { id: 'installations', icon: Wrench, label: 'Installations' },
     ],
   },
   {
     label: 'Accounting',
     items: [
-      { id: 'purchaseorders', icon: '◧', label: 'Purchase Orders' },
-      { id: 'invoices',       icon: '◈', label: 'Invoices' },
-      { id: 'bills',          icon: '⊞', label: 'Bills (COGS)' },
-      { id: 'expenses',       icon: '⊟', label: 'Expenses' },
+      { id: 'purchaseorders', icon: ShoppingCart,  label: 'Purchase Orders' },
+      { id: 'invoices',       icon: ReceiptText,   label: 'Invoices' },
+      { id: 'bills',          icon: Wallet,        label: 'Bills (COGS)' },
+      { id: 'expenses',       icon: CreditCard,    label: 'Expenses' },
     ],
   },
   {
     label: 'Sales & CRM',
     items: [
-      { id: 'customers',     icon: '◉', label: 'Customers' },
-      { id: 'sales',         icon: '◐', label: 'Sales' },
-      { id: 'salesorders',   icon: '◔', label: 'Sales Orders' },
-      { id: 'salesmanagers', icon: '◈', label: 'Sales Managers' },
+      { id: 'customers',     icon: Users,          label: 'Customers' },
+      { id: 'sales',         icon: TrendingUp,     label: 'Sales' },
+      { id: 'salesorders',   icon: ClipboardList,  label: 'Sales Orders' },
+      { id: 'salesmanagers', icon: UserCog,        label: 'Sales Managers' },
     ],
   },
   {
     label: 'Inventory',
     items: [
-      { id: 'products',  icon: '▦', label: 'Inventory & Products' },
-      { id: 'suppliers', icon: '◑', label: 'Suppliers & Vendors' },
+      { id: 'products',  icon: Package, label: 'Inventory & Products' },
+      { id: 'suppliers', icon: Truck,   label: 'Suppliers & Vendors' },
     ],
   },
   {
     label: 'Marketing',
     items: [
-      { id: 'social', icon: '◫', label: 'Social Media Planner' },
-      { id: 'seo',    icon: '◇', label: 'SEO Monitor' },
+      { id: 'social', icon: Megaphone, label: 'Social Media Planner' },
+      { id: 'seo',    icon: LineChart, label: 'SEO Monitor' },
     ],
   },
   {
     label: 'Settings',
     items: [
-      { id: 'formdesigns',    icon: '◨', label: 'Form Designs' },
-      { id: 'emaildesigns',   icon: '✉', label: 'Email Designs' },
-      { id: 'exports',        icon: '⤓', label: 'Exports' },
-      { id: 'supabasehealth', icon: '◈', label: 'System Health' },
+      { id: 'formdesigns',    icon: LayoutTemplate, label: 'Form Designs' },
+      { id: 'emaildesigns',   icon: Mail,           label: 'Email Designs' },
+      { id: 'exports',        icon: Download,       label: 'Exports' },
+      { id: 'supabasehealth', icon: Activity,       label: 'System Health' },
     ],
   },
 ];

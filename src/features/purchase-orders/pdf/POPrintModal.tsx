@@ -4,6 +4,7 @@ import { C } from '@/shared/tokens';
 import { useSuppliers } from '@/features/suppliers';
 import { useProducts } from '@/features/products';
 import { useDesign } from '@/features/form-designs';
+import { pdfFilename } from '@/shared/lib/format';
 import { POPdf } from './POPdf';
 import type { PurchaseOrder } from '../types';
 
@@ -40,7 +41,7 @@ export function POPrintModal({ po, onClose }: Props) {
     );
   }, [ready, po, supplier, products, profile, design]);
 
-  const filename = `PO-${po.id}.pdf`;
+  const filename = pdfFilename(po.id, supplier?.name);
 
   return (
     <div

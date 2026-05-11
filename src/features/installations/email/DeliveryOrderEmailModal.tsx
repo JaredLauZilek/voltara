@@ -5,7 +5,7 @@ import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useQuotes, calcQuoteTotal } from '@/features/sales';
-import { formatRM } from '@/shared/lib/format';
+import { formatRM, pdfFilename } from '@/shared/lib/format';
 import { DeliveryOrderPdf } from '../pdf/DeliveryOrderPdf';
 import type { Installation } from '../types';
 import type { PlaceholderContext } from '@/features/email-designs';
@@ -88,7 +88,7 @@ export function DeliveryOrderEmailModal({ installation, onClose }: Props) {
       subtitle={installation.id}
       context={ctx}
       buildPdfBlob={buildPdfBlob}
-      pdfFileName={`DO-${installation.id}.pdf`}
+      pdfFileName={pdfFilename(installation.id, customer?.name)}
       storagePathPrefix={`installations/${safeId(installation.id)}/email-`}
       onClose={onClose}
     />

@@ -17,6 +17,7 @@ interface Props {
   installation: Installation | null;
   onClose: () => void;
   onSave: (row: InstallationInsert) => void;
+  isSaving?: boolean;
   onDelete?: (id: string) => void;
 }
 
@@ -40,7 +41,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function InstallationModal({ installation, onClose, onSave, onDelete }: Props) {
+export function InstallationModal({ installation, onClose, onSave, isSaving = false, onDelete }: Props) {
   const isNew = !installation;
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
@@ -67,8 +68,19 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
       scheduled: todayISO(),
       status: 'Pending',
       notes: null,
+      qty_overrides: {},
     }
   );
+
+  const setOverride = (index: number, value: number, originalQty: number) => {
+    setForm((f) => {
+      const next = { ...(f.qty_overrides ?? {}) };
+      const key = String(index);
+      if (value === originalQty) delete next[key];
+      else next[key] = value;
+      return { ...f, qty_overrides: next };
+    });
+  };
 
   // Only Case Won / Sent / Draft quotes are eligible — Lost & Expired are dead
   const eligibleQuotes = useMemo(
@@ -130,13 +142,14 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
             <Badge status={linkedQuote.status} />
           </div>
           <div style={{ fontSize: 11, color: C.slate }}>
-            {linkedQuote.line_items.length} item(s) on this quote — these will appear on the Delivery Order.
+            {linkedQuote.line_items.length} item(s) on this quote — adjust qty below if the delivered amount differs.
+            Inventory is unaffected.
           </div>
           <div style={{ background: C.white, borderRadius: 8, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: C.seasalt }}>
-                  {['Product', 'SKU', 'Qty'].map((h) => (
+                  {['Product', 'SKU', 'Quote Qty', 'Delivered Qty'].map((h) => (
                     <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.border}` }}>
                       {h}
                     </th>
@@ -146,11 +159,56 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
               <tbody>
                 {linkedQuote.line_items.map((li, i) => {
                   const product = productById.get(li.product_id);
+                  const overrides = form.qty_overrides ?? {};
+                  const overridden = overrides[String(i)];
+                  const delivered = overridden ?? li.qty;
+                  const isOverridden = overridden !== undefined;
                   return (
                     <tr key={i} style={{ borderBottom: `1px solid ${C.divider}` }}>
                       <td style={{ padding: '7px 12px', fontWeight: 600 }}>{product?.name ?? li.product_id}</td>
                       <td style={{ padding: '7px 12px', color: C.slate, fontSize: 11 }}>{li.product_id}</td>
-                      <td style={{ padding: '7px 12px', fontWeight: 700 }}>{li.qty}</td>
+                      <td style={{ padding: '7px 12px', color: C.slate }}>{li.qty}</td>
+                      <td style={{ padding: '5px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <input
+                            type="number"
+                            min="0"
+                            value={delivered}
+                            onChange={(e) => setOverride(i, parseInt(e.target.value, 10) || 0, li.qty)}
+                            style={{
+                              width: 70,
+                              padding: '5px 8px',
+                              borderRadius: 8,
+                              border: `1px solid ${isOverridden ? '#B07D00' : C.border}`,
+                              background: isOverridden ? '#FFF8E1' : C.white,
+                              fontFamily: 'Figtree',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: isOverridden ? '#B07D00' : '#1a1a1a',
+                              outline: 'none',
+                              textAlign: 'center',
+                            }}
+                          />
+                          {isOverridden && (
+                            <button
+                              type="button"
+                              onClick={() => setOverride(i, li.qty, li.qty)}
+                              title="Reset to quote qty"
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: C.slate,
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 2,
+                              }}
+                            >
+                              ↺ Reset
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -269,20 +327,21 @@ export function InstallationModal({ installation, onClose, onSave, onDelete }: P
         </button>
         <button
           onClick={() => onSave(form)}
-          disabled={!valid || !form.quote_id}
+          disabled={!valid || !form.quote_id || isSaving}
           style={{
             padding: '10px 24px',
             borderRadius: 10,
             border: 'none',
-            background: !valid || !form.quote_id ? C.slate : C.green,
+            background: !valid || !form.quote_id || isSaving ? C.slate : C.green,
             color: C.white,
             fontFamily: 'Figtree',
             fontSize: 13,
             fontWeight: 700,
-            cursor: !valid || !form.quote_id ? 'not-allowed' : 'pointer',
+            cursor: isSaving ? 'wait' : (!valid || !form.quote_id ? 'not-allowed' : 'pointer'),
+            opacity: isSaving ? 0.8 : 1,
           }}
         >
-          {isNew ? 'Create Installation' : 'Save Changes'}
+          {isSaving ? 'Saving…' : isNew ? 'Create Installation' : 'Save Changes'}
         </button>
       </div>
     </Modal>

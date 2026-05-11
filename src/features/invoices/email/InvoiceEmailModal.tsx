@@ -4,7 +4,7 @@ import { EmailSendModal } from '@/features/email-designs';
 import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
-import { formatRM } from '@/shared/lib/format';
+import { formatRM, pdfFilename } from '@/shared/lib/format';
 import { InvoicePdf } from '../pdf/InvoicePdf';
 import { calcInvoiceTotals } from '../totals';
 import type { Invoice } from '../types';
@@ -83,7 +83,7 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
       subtitle={invoice.id}
       context={ctx}
       buildPdfBlob={buildPdfBlob}
-      pdfFileName={`Invoice-${invoice.id}.pdf`}
+      pdfFileName={pdfFilename(invoice.id, customer?.name)}
       storagePathPrefix={`invoices/${safeId(invoice.id)}/email-`}
       onClose={onClose}
     />

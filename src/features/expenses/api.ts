@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Attachment } from '@/shared/types';
 import type { Expense, ExpenseInsert, ExpenseUpdate } from './types';
 
@@ -9,7 +9,7 @@ export async function listExpenses(): Promise<Expense[]> {
 }
 
 export async function createExpense(row: ExpenseInsert): Promise<Expense> {
-  const { data, error } = await supabase.from('expenses').insert(row).select().single();
+  const { data, error } = await supabase.from('expenses').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

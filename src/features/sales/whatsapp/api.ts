@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { supabase } from '@/shared/lib/supabase';
+import { pdfFilename } from '@/shared/lib/format';
 import type { CompanyProfile, FormDesign } from '@/features/form-designs';
 import type { Customer } from '@/features/customers';
 import type { Product } from '@/features/products';
@@ -63,7 +64,7 @@ export async function sendQuoteViaWhatsApp(args: SendQuoteArgs): Promise<SendQuo
 
   // 3. Invoke the Edge Function. supabase.functions.invoke handles the
   //    project URL + anon-key bearer header for us.
-  const fileName = `${args.quote.type}-${args.quote.id}.pdf`;
+  const fileName = pdfFilename(args.quote.id, args.customer.name);
   const { data, error } = await supabase.functions.invoke<{
     ok: boolean;
     contactId?: string;

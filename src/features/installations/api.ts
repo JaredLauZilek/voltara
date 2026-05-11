@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Installation, InstallationInsert, InstallationUpdate } from './types';
 
 export async function listInstallations(): Promise<Installation[]> {
@@ -8,7 +8,7 @@ export async function listInstallations(): Promise<Installation[]> {
 }
 
 export async function createInstallation(row: InstallationInsert): Promise<Installation> {
-  const { data, error } = await supabase.from('installations').insert(row).select().single();
+  const { data, error } = await supabase.from('installations').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

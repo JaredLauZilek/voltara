@@ -228,7 +228,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
         design: inputs.invoiceDesign,
       })
     ).toBlob();
-    zip.file(`02-revenue/pdfs/${safeFile(inv.id)}.pdf`, blob);
+    zip.file(`02-revenue/pdfs/${safeFile(`${inv.id} (${customer?.name ?? ''})`.trim())}.pdf`, blob);
     tick(`Rendered ${inv.id}`);
   }
 
@@ -295,7 +295,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
         design: inputs.poDesign,
       })
     ).toBlob();
-    zip.file(`03-cogs/po-pdfs/${safeFile(po.id)}.pdf`, blob);
+    zip.file(`03-cogs/po-pdfs/${safeFile(`${po.id} (${supplier?.name ?? ''})`.trim())}.pdf`, blob);
     tick(`Rendered ${po.id}`);
   }
 

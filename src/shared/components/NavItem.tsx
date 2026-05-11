@@ -1,14 +1,15 @@
+import type { LucideIcon } from 'lucide-react';
 import { C } from '@/shared/tokens';
 
 interface Props {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   active: boolean;
   badge?: number;
   onClick: () => void;
 }
 
-export function NavItem({ icon, label, active, badge, onClick }: Props) {
+export function NavItem({ icon: Icon, label, active, badge, onClick }: Props) {
   return (
     <button
       onClick={onClick}
@@ -30,7 +31,9 @@ export function NavItem({ icon, label, active, badge, onClick }: Props) {
         transition: 'background .15s, color .15s',
       }}
     >
-      <span style={{ fontSize: 18, width: 20, textAlign: 'center' }}>{icon}</span>
+      <span style={{ width: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
+      </span>
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
       {badge && badge > 0 ? (
         <span

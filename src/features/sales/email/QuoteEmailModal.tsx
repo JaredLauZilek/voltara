@@ -5,7 +5,7 @@ import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { useCustomers } from '@/features/customers';
 import { useProducts } from '@/features/products';
 import { useSalesManagers } from '@/features/sales-managers';
-import { formatRM } from '@/shared/lib/format';
+import { formatRM, pdfFilename } from '@/shared/lib/format';
 import { QuotePdf } from '../pdf/QuotePdf';
 import { calcQuoteTotal } from '../types';
 import type { Quote } from '../types';
@@ -89,7 +89,7 @@ export function QuoteEmailModal({ quote, onClose }: Props) {
       subtitle={quote.id}
       context={ctx}
       buildPdfBlob={buildPdfBlob}
-      pdfFileName={`${quote.type}-${quote.id}.pdf`}
+      pdfFileName={pdfFilename(quote.id, customer?.name)}
       storagePathPrefix={`quotes/${safeId(quote.id)}/email-`}
       onClose={onClose}
     />

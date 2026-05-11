@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { SalesManager, SalesManagerInsert, SalesManagerUpdate } from './types';
 
 export async function listSalesManagers(): Promise<SalesManager[]> {
@@ -8,7 +8,7 @@ export async function listSalesManagers(): Promise<SalesManager[]> {
 }
 
 export async function createSalesManager(row: SalesManagerInsert): Promise<SalesManager> {
-  const { data, error } = await supabase.from('sales_managers').insert(row).select().single();
+  const { data, error } = await supabase.from('sales_managers').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

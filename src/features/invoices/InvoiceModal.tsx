@@ -305,6 +305,100 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           + Add Item
         </button>
 
+        {/* Stock adjustment preview — shows the delta the DB trigger
+            (fn_invoice_inventory_diff) will apply on Save. Baseline depends
+            on whether this is a new invoice (compare against the linked
+            quote, which Case Won already deducted) or an edit (compare
+            against the last-saved invoice). After save the prop refreshes,
+            form === baseline, and the panel disappears until the next edit. */}
+        {(() => {
+          const baseline = isNew
+            ? (linkedQuote?.line_items ?? [])
+            : (invoice?.line_items ?? []);
+          if (baseline.length === 0 && form.line_items.length === 0) return null;
+
+          const baselineQtyById = new Map<string, number>();
+          for (const li of baseline) {
+            if (!li.product_id) continue;
+            baselineQtyById.set(li.product_id, (baselineQtyById.get(li.product_id) ?? 0) + li.qty);
+          }
+          const currentQtyById = new Map<string, number>();
+          for (const li of form.line_items) {
+            if (!li.product_id) continue;
+            currentQtyById.set(li.product_id, (currentQtyById.get(li.product_id) ?? 0) + li.qty);
+          }
+          const allIds = new Set([...baselineQtyById.keys(), ...currentQtyById.keys()]);
+          const diffs: Array<{
+            productId: string;
+            name: string;
+            baselineQty: number;
+            currentQty: number;
+            delta: number;
+          }> = [];
+          for (const id of allIds) {
+            const product = products.find((p) => p.id === id);
+            if (product?.is_service) continue;
+            const b = baselineQtyById.get(id) ?? 0;
+            const c = currentQtyById.get(id) ?? 0;
+            const delta = c - b;
+            if (delta !== 0) {
+              diffs.push({ productId: id, name: product?.name ?? id, baselineQty: b, currentQty: c, delta });
+            }
+          }
+          if (diffs.length === 0) return null;
+
+          const baselineLabel = isNew ? 'Quote Qty' : 'Saved Qty';
+          const currentLabel = isNew ? 'Invoice Qty' : 'New Qty';
+          const headerLabel = isNew
+            ? `Stock adjustment on save (vs ${linkedQuote?.id ?? 'quote'})`
+            : 'Stock adjustment on save (vs last save)';
+
+          return (
+            <div style={{ marginTop: 14, background: '#FFF8E1', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#B07D00', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {headerLabel}
+              </div>
+              <div style={{ fontSize: 11, color: C.slate, lineHeight: 1.45 }}>
+                Saving will apply the deltas below to <strong>products.qty</strong>. Positive Δ deducts
+                more from stock; negative Δ restores. Services are skipped.
+              </div>
+              <div style={{ background: C.white, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: C.seasalt }}>
+                      {['Product', 'SKU', baselineLabel, currentLabel, 'Δ'].map((h) => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.border}` }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diffs.map((d) => {
+                      const positive = d.delta > 0;
+                      const tone = positive ? '#C0321A' : C.green;
+                      return (
+                        <tr key={d.productId} style={{ borderBottom: `1px solid ${C.divider}` }}>
+                          <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>{d.name}</td>
+                          <td style={{ padding: '9px 12px', color: C.slate, fontSize: 12 }}>{d.productId}</td>
+                          <td style={{ padding: '9px 12px', color: C.slate }}>{d.baselineQty}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>{d.currentQty}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: 700, color: tone }}>
+                            {positive ? '+' : ''}{d.delta}
+                            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.slate }}>
+                              ({positive ? 'will deduct' : 'will restore'})
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
         <div style={{ borderTop: `1px solid ${C.divider}`, marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
           <Row label="Subtotal" value={`RM ${totals.subtotal.toLocaleString()}`} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

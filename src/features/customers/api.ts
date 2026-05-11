@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Customer, CustomerInsert, CustomerUpdate, CustomerWithStats } from './types';
 
 export async function listCustomers(): Promise<Customer[]> {
@@ -24,7 +24,7 @@ export async function listCustomersWithStats(): Promise<CustomerWithStats[]> {
 }
 
 export async function createCustomer(row: CustomerInsert): Promise<Customer> {
-  const { data, error } = await supabase.from('customers').insert(row).select().single();
+  const { data, error } = await supabase.from('customers').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

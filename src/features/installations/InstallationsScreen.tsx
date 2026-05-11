@@ -56,11 +56,22 @@ export function InstallationsScreen() {
 
   const pagination = usePagination(filtered);
 
+  // Live-derived (§12) so the modal reflects the persisted state right after
+  // an edit-save — without this, the prop keeps pointing at the snapshot
+  // captured when the row was clicked, and any post-save indicators (like the
+  // qty-override badge) wouldn't update.
+  const modalRow =
+    modal && modal !== 'new' ? (installations.find((r) => r.id === modal.id) ?? modal) : null;
+
   const handleSave = (row: InstallationInsert) => {
     if (modal === 'new') {
+      // Create flow: close the modal so the table can refresh and the user
+      // sees the new row immediately.
       createMut.mutate(row, { onSuccess: () => setModal(null) });
     } else if (modal && typeof modal !== 'string') {
-      updateMut.mutate({ id: modal.id, patch: row }, { onSuccess: () => setModal(null) });
+      // Edit flow: keep the modal open per §11 so the user can click Download
+      // Delivery Order / continue editing without re-opening.
+      updateMut.mutate({ id: modal.id, patch: row });
     }
   };
 
@@ -160,42 +171,44 @@ export function InstallationsScreen() {
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {r.status === 'Completed' && profile && design ? (
-                          <button
-                            onClick={() => setPrintRow(r)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: 8,
-                              border: `1px solid ${C.green}`,
-                              background: 'transparent',
-                              color: C.green,
-                              fontFamily: 'Figtree',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            ⤓ DO
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setPrintRow(r)}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: 8,
+                                border: `1px solid ${C.green}`,
+                                background: 'transparent',
+                                color: C.green,
+                                fontFamily: 'Figtree',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              ⤓ DO
+                            </button>
+                            <button
+                              onClick={() => setShareRow(r)}
+                              title="Share this delivery order"
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: 8,
+                                border: `1px solid ${C.border}`,
+                                background: C.white,
+                                color: C.green,
+                                fontFamily: 'Figtree',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              ↗ Share
+                            </button>
+                          </>
                         ) : null}
-                        <button
-                          onClick={() => setShareRow(r)}
-                          title="Share this delivery order"
-                          style={{
-                            padding: '5px 10px',
-                            borderRadius: 8,
-                            border: `1px solid ${C.border}`,
-                            background: C.white,
-                            color: C.green,
-                            fontFamily: 'Figtree',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          ↗ Share
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -223,9 +236,10 @@ export function InstallationsScreen() {
 
       {modal && (
         <InstallationModal
-          installation={modal === 'new' ? null : modal}
+          installation={modal === 'new' ? null : modalRow}
           onClose={() => setModal(null)}
           onSave={handleSave}
+          isSaving={createMut.isPending || updateMut.isPending}
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
         />
       )}

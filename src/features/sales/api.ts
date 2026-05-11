@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Attachment } from '@/shared/types';
 import type { Quote, QuoteInsert, QuoteUpdate } from './types';
 
@@ -9,7 +9,7 @@ export async function listQuotes(): Promise<Quote[]> {
 }
 
 export async function createQuote(row: QuoteInsert): Promise<Quote> {
-  const { data, error } = await supabase.from('quotes').insert(row).select().single();
+  const { data, error } = await supabase.from('quotes').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }

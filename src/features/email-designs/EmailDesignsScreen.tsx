@@ -8,6 +8,12 @@ import {
   useUpdateCompanyEmailProfile,
   useUpdateEmailDesign,
 } from './hooks';
+
+// Purchase orders go to suppliers with varied formats / currencies — emailing
+// a templated PO doesn't fit the workflow, so the PO row stays in the DB
+// (harmless) but is hidden from this UI. PO sharing is download-only on the
+// Purchase Orders screen.
+const EMAIL_DOC_TYPES = DOC_TYPES.filter((t) => t.id !== 'purchase_order');
 import { CompanyEmailProfilePanel } from './CompanyEmailProfilePanel';
 import { EmailRoutingPanel } from './EmailRoutingPanel';
 import { EmailDesignPanel } from './EmailDesignPanel';
@@ -121,7 +127,7 @@ export function EmailDesignsScreen() {
         <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 6 }}>
           Document Type
         </span>
-        {DOC_TYPES.map((t) => {
+        {EMAIL_DOC_TYPES.map((t) => {
           const saved = designsQ.data?.find((d) => d.doc_type === t.id);
           const modified = saved && !isDesignDefault(saved);
           const active = docType === t.id;
@@ -189,7 +195,7 @@ export function EmailDesignsScreen() {
                 cursor: 'pointer',
               }}
             >
-              Reset {DOC_TYPES.find((d) => d.id === docType)?.label} to defaults
+              Reset {EMAIL_DOC_TYPES.find((d) => d.id === docType)?.label} to defaults
             </button>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
               {dirty && <Badge status="Pending" />}

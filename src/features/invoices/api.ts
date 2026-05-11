@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/lib/supabase';
+import { supabase, stripId } from '@/shared/lib/supabase';
 import type { Invoice, InvoiceInsert, InvoiceUpdate } from './types';
 
 export async function listInvoices(): Promise<Invoice[]> {
@@ -8,7 +8,7 @@ export async function listInvoices(): Promise<Invoice[]> {
 }
 
 export async function createInvoice(row: InvoiceInsert): Promise<Invoice> {
-  const { data, error } = await supabase.from('invoices').insert(row).select().single();
+  const { data, error } = await supabase.from('invoices').insert(stripId(row)).select().single();
   if (error) throw error;
   return data;
 }
