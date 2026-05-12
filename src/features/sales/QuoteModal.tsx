@@ -10,6 +10,8 @@ import { QUOTE_STATUSES, QUOTE_TYPES, calcQuoteTotal } from './types';
 import type { Quote, QuoteInsert } from './types';
 import { AttachmentsField } from '@/shared/components/AttachmentsField';
 import { QuotePrintModal } from './pdf/QuotePrintModal';
+import { SetPicker } from './sets';
+import type { QuoteSet } from './sets';
 
 interface Props {
   quote: Quote | null;
@@ -96,6 +98,21 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
       // Snapshot the master description so the user can edit it per-quote.
       description: p?.description ?? '',
     });
+  };
+
+  /** Appends a set's items to the current line_items. Prices and descriptions
+   *  are snapshotted from the *current* product master so old sets stay fresh. */
+  const insertSet = (set: QuoteSet) => {
+    const items: LineItem[] = set.line_items.map((it) => {
+      const p = products.find((x) => x.id === it.product_id);
+      return {
+        product_id: it.product_id,
+        qty: it.qty,
+        unit_price_snapshot: p?.price ?? 0,
+        description: it.description ?? p?.description ?? '',
+      };
+    });
+    setForm((f) => ({ ...f, line_items: [...f.line_items, ...items] }));
   };
 
   return (
@@ -316,24 +333,25 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
           );
         })}
 
-        <button
-          onClick={addItem}
-          style={{
-            marginTop: form.line_items.length > 0 ? 4 : 0,
-            fontSize: 12,
-            fontWeight: 600,
-            color: C.green,
-            background: C.honeydew,
-            border: 'none',
-            borderRadius: 6,
-            padding: '8px 14px',
-            cursor: 'pointer',
-            fontFamily: 'Figtree',
-            alignSelf: 'flex-start',
-          }}
-        >
-          + Add Item
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: form.line_items.length > 0 ? 4 : 0, alignItems: 'center' }}>
+          <button
+            onClick={addItem}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: C.green,
+              background: C.honeydew,
+              border: 'none',
+              borderRadius: 6,
+              padding: '8px 14px',
+              cursor: 'pointer',
+              fontFamily: 'Figtree',
+            }}
+          >
+            + Add Item
+          </button>
+          <SetPicker onInsert={insertSet} />
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTop: `1px solid ${C.divider}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

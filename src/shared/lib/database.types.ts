@@ -164,6 +164,17 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['quotes']['Row'], 'created_at' | 'stock_deducted' | 'won_at' | 'last_followup_date' | 'customer_po_attachments' | 'proposal_attachments' | 'remarks'> & { created_at?: string; stock_deducted?: boolean; won_at?: string | null; last_followup_date?: string | null; customer_po_attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[]; proposal_attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[]; remarks?: string | null };
         Update: Partial<Database['public']['Tables']['quotes']['Insert']>;
       };
+      quote_sets: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          line_items: { product_id: string; qty: number; description?: string }[];
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['quote_sets']['Row'], 'created_at'> & { created_at?: string };
+        Update: Partial<Database['public']['Tables']['quote_sets']['Insert']>;
+      };
       sales_managers: {
         Row: {
           id: string;

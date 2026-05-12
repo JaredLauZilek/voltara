@@ -256,7 +256,10 @@ export function SupabaseHealthScreen() {
           ))}
         </div>
         <a
-          href="https://supabase.com/dashboard/project/yueoptkuphdlfsopjstk"
+          href={`https://supabase.com/dashboard/project/${
+            (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+              ?.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? ''
+          }`}
           target="_blank"
           rel="noreferrer"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 16, padding: '8px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.seasalt, color: C.green, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
