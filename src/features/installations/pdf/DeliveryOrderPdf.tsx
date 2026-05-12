@@ -204,10 +204,6 @@ export function DeliveryOrderPdf({ installation, quote, customer, products, prof
             </Text>
           ) : null}
           <Text style={styles.refRow}>
-            <Text style={styles.refRowLabel}>Contractor: </Text>
-            {installation.tech || '—'}
-          </Text>
-          <Text style={styles.refRow}>
             <Text style={styles.refRowLabel}>Status: </Text>
             {installation.status}
           </Text>

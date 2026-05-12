@@ -9,6 +9,8 @@ interface Props {
   onClose: () => void;
   onSave: (row: CustomerInsert) => void;
   onDelete?: (id: string) => void;
+  isSaving?: boolean;
+  saveError?: string | null;
 }
 
 const COUNTRY_CODES = [
@@ -58,7 +60,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
+export function CustomerModal({ customer, onClose, onSave, onDelete, isSaving, saveError }: Props) {
   const isNew = !customer;
   const [form, setForm] = useState<CustomerInsert>(
     customer ?? {
@@ -98,12 +100,20 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
     setEmailError(validateEmail(val));
   };
 
+  const [nameError, setNameError] = useState('');
+
   const handleSave = () => {
+    if (!form.name.trim()) {
+      setNameError('Name is required.');
+      return;
+    }
     if (form.email && emailError) return;
     if (phoneError) return;
     const phone = phoneLocal ? phoneCode + phoneLocal : null;
-    onSave({ ...form, phone });
+    onSave({ ...form, name: form.name.trim(), phone });
   };
+
+  const canSave = !!form.name.trim() && !(form.email && emailError) && !phoneError && !isSaving;
 
   return (
     <Modal title={isNew ? 'New Customer' : form.name} subtitle={!isNew ? form.id : undefined} onClose={onClose}>
@@ -139,9 +149,12 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
           <label style={labelStyle}>Name / Company</label>
           <input
             value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            style={inputStyle}
+            onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); if (nameError) setNameError(''); }}
+            style={{ ...inputStyle, borderColor: nameError ? C.error : C.border }}
           />
+          {nameError && (
+            <div style={{ fontSize: 11, color: C.error, marginTop: 4 }}>{nameError}</div>
+          )}
         </div>
 
         {/* Attention To */}
@@ -260,6 +273,13 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
         </div>
       </div>
 
+      {/* Save error */}
+      {saveError && (
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8 }}>
+          {saveError}
+        </div>
+      )}
+
       {/* Actions */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         {!isNew && onDelete && (
@@ -339,21 +359,21 @@ export function CustomerModal({ customer, onClose, onSave, onDelete }: Props) {
         </button>
         <button
           onClick={handleSave}
-          disabled={!!(form.email && emailError)}
+          disabled={!canSave}
           style={{
             padding: '10px 24px',
             borderRadius: 10,
             border: 'none',
-            background: C.green,
+            background: canSave ? C.green : C.slate,
             color: C.white,
             fontFamily: 'Figtree',
             fontSize: 13,
             fontWeight: 700,
-            cursor: form.email && emailError ? 'not-allowed' : 'pointer',
-            opacity: form.email && emailError ? 0.5 : 1,
+            cursor: canSave ? 'pointer' : (isSaving ? 'wait' : 'not-allowed'),
+            opacity: canSave ? 1 : 0.6,
           }}
         >
-          {isNew ? 'Create' : 'Save Changes'}
+          {isSaving ? 'Saving…' : (isNew ? 'Create' : 'Save Changes')}
         </button>
       </div>
     </Modal>

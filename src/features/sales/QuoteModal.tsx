@@ -159,6 +159,13 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
           Shows the items about to be deducted (when transitioning to Case Won)
           or restored (when leaving Case Won). Disappears after save because
           quote.status then matches form.status. */}
+      {/* Warning when reverting Case Won — linked invoice (if any) will be orphaned */}
+      {quote && quote.status === 'Case Won' && form.status !== 'Case Won' && (
+        <div style={{ background: '#FDEAEA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+          Reverting from Case Won. If an invoice was issued for this quote it will stay in place — stock stays reserved for the invoice. You may want to cancel or delete that invoice separately.
+        </div>
+      )}
+
       {(() => {
         if (!quote || quote.status === form.status) return null;
         const isDeducting = form.status === 'Case Won';
@@ -273,10 +280,11 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
                 <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   value={item.qty}
-                  onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
+                  onChange={(e) => updateItem(i, { qty: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                   style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
+                  title="Set to 0 to keep this line on the document for description only (no charge, no stock impact)"
                 />
                 <input
                   type="number"

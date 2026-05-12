@@ -12,6 +12,7 @@ import type { Invoice, InvoiceInsert } from './types';
 import { calcInvoiceTotals } from './totals';
 import { InvoicePrintModal } from './pdf/InvoicePrintModal';
 import { PaymentsSection } from './payments/PaymentsSection';
+import { useInvoicePayments } from './payments/hooks';
 
 interface Props {
   invoice: Invoice | null;
@@ -99,12 +100,33 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
       customer_id: q.customer_id,
       line_items: q.line_items,
       discount: q.discount ?? 0,
+      // Quotes are always percent-mode; the invoice owns its own mode setting
+      // and must match the quote's interpretation when syncing.
+      discount_mode: 'percent',
       // Carry the quote's notes through to the invoice as a starting point
       notes: q.notes ?? f.notes,
     }));
   };
 
+  // Deep-equal compare so qty / unit price drift surfaces the Re-sync button
+  // (the previous check only compared array length).
+  const lineItemsMatch = linkedQuote
+    ? JSON.stringify(linkedQuote.line_items) === JSON.stringify(form.line_items)
+    : true;
+  const showResync =
+    !isNew && linkedQuote && (linkedQuote.discount !== form.discount || !lineItemsMatch);
+
+  // Customer drift vs linked quote → render a soft warning beside the picker.
+  const customerDrift = !!linkedQuote && form.customer_id !== linkedQuote.customer_id;
+
   const totals = calcInvoiceTotals(form.line_items, form.discount, form.tax, form.discount_mode ?? 'percent');
+
+  // Surfaced so we can warn when an edit-down would over-credit a paid invoice
+  // (the DB guard only blocks overpayments via the payments table, not via
+  // line-item shrinkage).
+  const { data: existingPayments = [] } = useInvoicePayments(invoice?.id ?? '');
+  const paidSoFar = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const overpaidByEdit = !isNew && paidSoFar > totals.total + 0.005;
 
   const addItem = () => {
     const first = products[0];
@@ -204,13 +226,18 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
               Pre-filled from {linkedQuote.id}{linkedQuote.discount > 0 ? ` (discount ${linkedQuote.discount}%)` : ''}.
               You can still adjust customer, line items, or discount below.
             </span>
-            {!isNew && (linkedQuote.discount !== form.discount || linkedQuote.line_items.length !== form.line_items.length) && (
+            {showResync && (
               <button
                 onClick={() => handleQuoteChange(linkedQuote.id)}
                 style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.green}`, background: 'transparent', color: C.green, fontFamily: 'Figtree', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
               >
                 Re-sync from quote
               </button>
+            )}
+            {customerDrift && (
+              <span style={{ fontSize: 11, color: '#C0321A', fontWeight: 600 }}>
+                Customer differs from quote — re-sync to align, or leave as an intentional override.
+              </span>
             )}
           </div>
         )}
@@ -266,10 +293,11 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
                 <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   value={item.qty}
-                  onChange={(e) => updateItem(i, { qty: parseInt(e.target.value, 10) || 1 })}
+                  onChange={(e) => updateItem(i, { qty: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                   style={{ ...inputStyle, padding: '7px 8px', fontSize: 12, textAlign: 'center' }}
+                  title="Set to 0 to keep this line on the document for description only (no charge, no stock impact)"
                 />
                 <input
                   type="number"
@@ -519,6 +547,11 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
               RM {totals.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
+          {overpaidByEdit && (
+            <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#FDEAEA', color: '#C0321A', fontSize: 12, fontWeight: 600 }}>
+              Heads up: paid (RM {paidSoFar.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) now exceeds the new total. The invoice will flip to Paid on save, but the RM {(paidSoFar - totals.total).toFixed(2)} excess isn't tracked as a refund — v1 has no refund flow.
+            </div>
+          )}
         </div>
       </div>
 

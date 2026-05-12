@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Badge } from '@/shared/components/Badge';
@@ -21,6 +21,15 @@ export function CustomersScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [modal, setModal] = useState<Customer | 'new' | null>(null);
+
+  // Reset mutation state whenever the modal opens/closes so a previous
+  // failure (e.g. NOT NULL on name) doesn't leak its error into the next
+  // session, and isPending can't get visually stuck.
+  useEffect(() => {
+    createMut.reset();
+    updateMut.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal]);
 
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
@@ -236,6 +245,14 @@ export function CustomersScreen() {
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={handleDelete}
+          isSaving={createMut.isPending || updateMut.isPending}
+          saveError={
+            createMut.error
+              ? (createMut.error as Error).message
+              : updateMut.error
+                ? (updateMut.error as Error).message
+                : null
+          }
         />
       )}
     </div>

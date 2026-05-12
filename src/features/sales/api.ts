@@ -28,7 +28,16 @@ export async function deleteQuote(
   const paths = [...poAttachments, ...proposalAttachments].map((a) => a.storage_path);
   if (paths.length > 0) await supabase.storage.from('attachments').remove(paths);
   const { error } = await supabase.from('quotes').delete().eq('id', id);
-  if (error) throw error;
+  if (error) {
+    // The FK from invoices.quote_id has NO ACTION on delete — supabase returns
+    // 23503. Translate to something the user can act on.
+    if (error.code === '23503') {
+      throw new Error(
+        'This quote has a linked invoice. Delete or unlink the invoice first.',
+      );
+    }
+    throw error;
+  }
 }
 
 export async function expireOverdueQuotes(): Promise<void> {
