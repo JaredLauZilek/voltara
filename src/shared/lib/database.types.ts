@@ -512,6 +512,69 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['bills']['Row'], 'created_at' | 'tax' | 'status' | 'currency'> & { created_at?: string; tax?: number; status?: 'Unpaid' | 'Paid' | 'Overdue' | 'Disputed'; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
         Update: Partial<Database['public']['Tables']['bills']['Insert']>;
       };
+      blog_competitors: {
+        Row: { id: string; name: string; website: string | null; notes: string | null; created_at: string };
+        Insert: Omit<Database['public']['Tables']['blog_competitors']['Row'], 'created_at'> & { created_at?: string };
+        Update: Partial<Database['public']['Tables']['blog_competitors']['Insert']>;
+      };
+      blog_keywords: {
+        Row: { id: string; keyword: string; intent: string | null; priority: number; created_at: string };
+        Insert: Omit<Database['public']['Tables']['blog_keywords']['Row'], 'created_at' | 'priority'> & { created_at?: string; priority?: number };
+        Update: Partial<Database['public']['Tables']['blog_keywords']['Insert']>;
+      };
+      blog_drafts: {
+        Row: {
+          id: string;
+          title: string;
+          slug: string | null;
+          body_md: string;
+          excerpt: string | null;
+          cover_image_url: string | null;
+          target_keywords: string[];
+          competitor_refs: string[];
+          status: 'draft' | 'approved' | 'scheduled' | 'publishing' | 'published' | 'failed';
+          scheduled_at: string | null;
+          published_at: string | null;
+          wix_post_id: string | null;
+          wix_post_url: string | null;
+          failure_reason: string | null;
+          generated_at: string | null;
+          generated_model: string | null;
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['blog_drafts']['Row'], 'created_at' | 'updated_at' | 'status' | 'body_md' | 'target_keywords' | 'competitor_refs'> & {
+          created_at?: string;
+          updated_at?: string;
+          status?: 'draft' | 'approved' | 'scheduled' | 'publishing' | 'published' | 'failed';
+          body_md?: string;
+          target_keywords?: string[];
+          competitor_refs?: string[];
+        };
+        Update: Partial<Database['public']['Tables']['blog_drafts']['Insert']>;
+      };
+      blog_seo_snapshots: {
+        Row: { id: number; draft_id: string; fetched_at: string; metrics: Record<string, unknown> };
+        Insert: Omit<Database['public']['Tables']['blog_seo_snapshots']['Row'], 'id' | 'fetched_at' | 'metrics'> & { id?: number; fetched_at?: string; metrics?: Record<string, unknown> };
+        Update: Partial<Database['public']['Tables']['blog_seo_snapshots']['Insert']>;
+      };
+      ai_blogger_config: {
+        Row: {
+          id: string;
+          brand_voice: string | null;
+          target_audience: string | null;
+          posting_cadence: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'manual';
+          next_run_at: string | null;
+          autopublish_on_approval: boolean;
+          wix_site_id: string | null;
+          wix_member_id: string | null;
+          default_cover_image_url: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['ai_blogger_config']['Row']> & { id?: string };
+        Update: Partial<Database['public']['Tables']['ai_blogger_config']['Insert']>;
+      };
     };
     Views: {
       vw_customer_stats: {

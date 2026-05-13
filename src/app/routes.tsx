@@ -5,6 +5,7 @@ import { InvoicesScreen } from '@/features/invoices';
 import { InstallationsScreen } from '@/features/installations';
 import { CustomersScreen } from '@/features/customers';
 import { SocialScreen } from '@/features/social';
+import { AIBloggerScreen } from '@/features/ai-blogger';
 import { SalesScreen } from '@/features/sales';
 import { SalesOrdersScreen } from '@/features/sales-orders';
 import { SalesManagersScreen } from '@/features/sales-managers';
@@ -25,6 +26,7 @@ export const ROUTES: Record<ScreenId, ReactNode> = {
   installations:  <InstallationsScreen />,
   customers:      <CustomersScreen />,
   social:         <SocialScreen />,
+  aiblogger:      <AIBloggerScreen />,
   sales:          <SalesScreen />,
   salesorders:    <SalesOrdersScreen />,
   salesmanagers:  <SalesManagersScreen />,

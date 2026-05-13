@@ -16,6 +16,7 @@ import {
   Truck,
   Megaphone,
   LineChart,
+  Sparkles,
   LayoutTemplate,
   Mail,
   Download,
@@ -29,6 +30,7 @@ export type ScreenId =
   | 'installations'
   | 'customers'
   | 'social'
+  | 'aiblogger'
   | 'sales'
   | 'salesorders'
   | 'salesmanagers'
@@ -95,8 +97,9 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Marketing',
     items: [
-      { id: 'social', icon: Megaphone, label: 'Social Media Planner' },
-      { id: 'seo',    icon: LineChart, label: 'SEO Monitor' },
+      { id: 'social',    icon: Megaphone, label: 'Social Media Planner' },
+      { id: 'aiblogger', icon: Sparkles,  label: 'AI Blogger' },
+      { id: 'seo',       icon: LineChart, label: 'SEO Monitor' },
     ],
   },
   {
@@ -116,6 +119,7 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   installations:  'Installations',
   customers:      'Customers',
   social:         'Social Media Planner',
+  aiblogger:      'AI Blogger',
   sales:          'Sales',
   salesorders:    'Sales Orders',
   salesmanagers:  'Sales Managers',
