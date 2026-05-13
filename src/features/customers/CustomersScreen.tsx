@@ -7,6 +7,7 @@ import { Pagination, usePagination } from '@/shared/components/Pagination';
 
 import { useCustomersWithStats, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from './hooks';
 import { CustomerModal } from './CustomerModal';
+import { CustomerImportModal } from './CustomerImportModal';
 import type { Customer, CustomerInsert, CustomerWithStats } from './types';
 
 export function CustomersScreen() {
@@ -21,6 +22,7 @@ export function CustomersScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [modal, setModal] = useState<Customer | 'new' | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   // Reset mutation state whenever the modal opens/closes so a previous
   // failure (e.g. NOT NULL on name) doesn't leak its error into the next
@@ -32,8 +34,17 @@ export function CustomersScreen() {
   }, [modal]);
 
   const filtered = customers.filter((c) => {
-    const q = search.toLowerCase();
-    if (q && !c.name.toLowerCase().includes(q) && !(c.email ?? '').toLowerCase().includes(q)) return false;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      const nameHit  = c.name.toLowerCase().includes(q);
+      const emailHit = (c.email ?? '').toLowerCase().includes(q);
+      // Phone match ignores punctuation on both sides so "+60 19-225 6634"
+      // and "0192256634" both match the stored "+60192256634".
+      const qDigits = q.replace(/\D/g, '');
+      const phoneDigits = (c.phone ?? '').replace(/\D/g, '');
+      const phoneHit = qDigits.length >= 3 && phoneDigits.includes(qDigits);
+      if (!nameHit && !emailHit && !phoneHit) return false;
+    }
     if (typeFilter !== 'All' && c.type !== typeFilter) return false;
     if (dateFrom && c.joined && c.joined < dateFrom) return false;
     if (dateTo && c.joined && c.joined > dateTo) return false;
@@ -128,7 +139,7 @@ export function CustomersScreen() {
         onFilterChange={(f) => { setTypeFilter(f); resetPage(); }}
         search={search}
         onSearchChange={(s) => { setSearch(s); resetPage(); }}
-        searchPlaceholder="Search customers…"
+        searchPlaceholder="Search by name, email or phone…"
         primaryLabel="+ Add Customer"
         onPrimary={() => setModal('new')}
         extra={
@@ -155,6 +166,14 @@ export function CustomersScreen() {
                 ✕
               </button>
             )}
+            <span style={{ width: 1, height: 20, background: C.border, marginLeft: 6 }} />
+            <button
+              onClick={() => setShowImport(true)}
+              title="Bulk-import customers from a CSV"
+              style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: C.white, color: C.green, fontFamily: 'Figtree', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              ⤓ Import CSV
+            </button>
           </div>
         }
       />
@@ -238,6 +257,8 @@ export function CustomersScreen() {
           onPageChange={pagination.setPage}
         />
       </div>
+
+      {showImport && <CustomerImportModal onClose={() => setShowImport(false)} />}
 
       {modal && (
         <CustomerModal
