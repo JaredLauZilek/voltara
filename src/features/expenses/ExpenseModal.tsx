@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { C } from '@/shared/tokens';
+import { supabase } from '@/shared/lib/supabase';
 import { Modal } from '@/shared/components/Modal';
 import { todayISO } from '@/shared/lib/format';
 import { AttachmentsField } from '@/shared/components/AttachmentsField';
+import { ExpenseEntityPicker } from './ExpenseEntityPicker';
+import { ExpenseCategoryPicker } from './ExpenseCategoryPicker';
+import { InvoicePrefillField } from './components/InvoicePrefillField';
+import type { ParsedExpenseInvoice } from './lib/parseInvoice';
+import type { Attachment } from '@/shared/types';
 import {
-  EMPLOYEE_CATEGORIES,
-  EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
-  PAYMENT_METHODS,
   RECURRENCE_FREQUENCIES,
 } from './types';
 import type {
@@ -72,16 +75,16 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
       id: newExpenseId(),
       expense_date: todayISO(),
       category: 'Other',
-      payee: '',
+      payee: null,
       payee_email: null,
       supplier_id: null,
       entity: null,
       amount: 0,
-      payment_method: 'Bank Transfer',
+      payment_method: null,
       reference: null,
       recurrence: 'None',
-      status: 'Pending',
-      paid_on: null,
+      status: 'Paid',
+      paid_on: todayISO(),
       attachments: [],
       periods: [],
       notes: null,
@@ -89,8 +92,7 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
   );
 
   const isRecurring = form.recurrence !== 'None';
-  const isEmployeeCategory = form.category && EMPLOYEE_CATEGORIES.includes(form.category);
-  const valid = !!form.payee.trim() && form.amount >= 0 && !!form.expense_date;
+  const valid = form.amount >= 0 && !!form.expense_date;
 
   const setRecurringToggle = (on: boolean) => {
     setForm((f) => {
@@ -152,14 +154,56 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
     });
   };
 
+  // Treat the first attachment as the "prefill" file when present — same
+  // heuristic the Bills modal uses. The drop-zone watches this so the user
+  // can see what was attached and replace it.
+  const prefillAttachment = (form.attachments ?? [])[0] ?? null;
+
+  const handleInvoiceApply = ({ fields, attachment }: { fields: ParsedExpenseInvoice; attachment: Attachment }) => {
+    setForm((f) => {
+      const next: ExpenseInsert = {
+        ...f,
+        attachments: [attachment, ...(f.attachments ?? [])],
+      };
+      if (fields.amount !== null) next.amount = fields.amount;
+      if (fields.expense_date) next.expense_date = fields.expense_date;
+      if (fields.reference) next.reference = fields.reference;
+      if (fields.entity) next.entity = fields.entity;
+      if (fields.category) next.category = fields.category;
+      return next;
+    });
+  };
+
+  const handleInvoiceClear = async () => {
+    if (!prefillAttachment) return;
+    await supabase.storage.from('attachments').remove([prefillAttachment.storage_path]);
+    setForm((f) => ({
+      ...f,
+      attachments: (f.attachments ?? []).filter((a) => a.storage_path !== prefillAttachment.storage_path),
+    }));
+  };
+
   const periods = form.periods ?? [];
 
   return (
     <Modal
       title={isNew ? 'New Expense' : form.id}
-      subtitle={!isNew ? `${form.category} · ${form.payee}` : undefined}
+      subtitle={!isNew ? `${form.category}${form.entity ? ` · ${form.entity}` : ''}` : undefined}
       onClose={onClose}
     >
+      {/* Invoice / receipt auto-fill — drops a file, parses via Anthropic
+          vision, applies fields + attaches the file as form.attachments[0].
+          Hidden for recurring expenses since those track many period-level
+          invoices, not a single one. */}
+      {!isRecurring && (
+        <InvoicePrefillField
+          storagePath={`expenses/${form.id}`}
+          onApply={handleInvoiceApply}
+          attached={prefillAttachment}
+          onClear={handleInvoiceClear}
+        />
+      )}
+
       {/* Recurring toggle row */}
       <div
         style={{
@@ -214,49 +258,19 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
         </div>
         <div>
           <label style={labelStyle}>Category</label>
-          <select
+          <ExpenseCategoryPicker
             value={form.category}
-            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as typeof f.category }))}
-            style={inputStyle}
-          >
-            {EXPENSE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Payee</label>
-          <input
-            value={form.payee}
-            onChange={(e) => setForm((f) => ({ ...f, payee: e.target.value }))}
-            style={inputStyle}
-            placeholder="e.g. Aisha Kamal, Office Petty Cash"
+            onChange={(next) => setForm((f) => ({ ...f, category: next }))}
           />
         </div>
+
         <div>
           <label style={labelStyle}>Entity</label>
-          <input
-            value={form.entity ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, entity: e.target.value || null }))}
-            style={inputStyle}
-            placeholder="e.g. Google, YouTube, Bookstore A"
+          <ExpenseEntityPicker
+            value={form.entity}
+            onChange={(next) => setForm((f) => ({ ...f, entity: next }))}
           />
         </div>
-
-        {isEmployeeCategory && (
-          <div style={{ gridColumn: '1/-1' }}>
-            <label style={labelStyle}>Payee Email</label>
-            <input
-              type="email"
-              value={form.payee_email ?? ''}
-              onChange={(e) => setForm((f) => ({ ...f, payee_email: e.target.value || null }))}
-              style={inputStyle}
-              placeholder="employee@voltara.com.my"
-            />
-          </div>
-        )}
-
         <div>
           <label style={labelStyle}>{isRecurring ? 'Amount per period (RM)' : 'Amount (RM)'}</label>
           <input
@@ -267,19 +281,6 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
             onChange={(e) => setForm((f) => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
             style={inputStyle}
           />
-        </div>
-        <div>
-          <label style={labelStyle}>Payment Method</label>
-          <select
-            value={form.payment_method ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, payment_method: (e.target.value || null) as typeof f.payment_method }))}
-            style={inputStyle}
-          >
-            <option value="">— Select —</option>
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
         </div>
 
         <div style={{ gridColumn: '1/-1' }}>

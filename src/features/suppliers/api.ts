@@ -1,5 +1,13 @@
 import { supabase, stripId } from '@/shared/lib/supabase';
+import { toMYR } from '@/shared/lib/currency';
 import type { Supplier, SupplierInsert, SupplierUpdate, SupplierWithStats, SupplierKind } from './types';
+
+interface POAggRow {
+  supplier_id: string | null;
+  line_items: { qty: number; unit_price_snapshot: number }[];
+  discount: number;
+  currency: string | null;
+}
 
 export async function listSuppliers(): Promise<Supplier[]> {
   const { data, error } = await supabase.from('suppliers').select('*').order('name');
@@ -8,14 +16,29 @@ export async function listSuppliers(): Promise<Supplier[]> {
 }
 
 export async function listSuppliersWithStats(): Promise<SupplierWithStats[]> {
-  const [suppliersRes, statsRes] = await Promise.all([
+  // We aggregate spend on the client instead of via vw_supplier_stats so that
+  // multi-currency POs are converted to MYR via the static rate table in
+  // shared/lib/currency.ts before summing. (The view sums raw numeric totals
+  // and is currency-agnostic.)
+  const [suppliersRes, posRes] = await Promise.all([
     supabase.from('suppliers').select('*').order('name'),
-    supabase.from('vw_supplier_stats').select('*'),
+    supabase.from('purchase_orders').select('supplier_id, line_items, discount, currency'),
   ]);
   if (suppliersRes.error) throw suppliersRes.error;
-  if (statsRes.error) throw statsRes.error;
+  if (posRes.error) throw posRes.error;
+
   const stats = new Map<string, { po_count: number; total_spend: number }>();
-  for (const s of statsRes.data ?? []) stats.set(s.supplier_id, { po_count: s.po_count, total_spend: Number(s.total_spend) });
+  for (const po of (posRes.data ?? []) as POAggRow[]) {
+    if (!po.supplier_id) continue;
+    const subtotal = po.line_items.reduce((s, li) => s + li.qty * li.unit_price_snapshot, 0);
+    const totalNative = subtotal * (1 - (po.discount ?? 0) / 100);
+    const totalMYR = toMYR(totalNative, po.currency);
+    const cur = stats.get(po.supplier_id) ?? { po_count: 0, total_spend: 0 };
+    cur.po_count += 1;
+    cur.total_spend += totalMYR;
+    stats.set(po.supplier_id, cur);
+  }
+
   return (suppliersRes.data ?? []).map((s) => ({
     ...s,
     po_count: stats.get(s.id)?.po_count ?? 0,

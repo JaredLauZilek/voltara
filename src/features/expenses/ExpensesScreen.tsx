@@ -9,10 +9,11 @@ import {
   useCreateExpense,
   useUpdateExpense,
   useDeleteExpense,
+  useExpenseCategories,
 } from './hooks';
 import { ExpenseModal } from './ExpenseModal';
-import { EXPENSE_CATEGORIES, EXPENSE_STATUSES } from './types';
-import type { Expense, ExpenseCategory, ExpenseInsert, ExpenseStatus } from './types';
+import { EXPENSE_STATUSES } from './types';
+import type { Expense, ExpenseInsert, ExpenseStatus } from './types';
 
 type StatusFilter = 'All' | ExpenseStatus;
 type Tab = 'one-off' | 'recurring';
@@ -27,12 +28,13 @@ const MONTHLY_FACTOR: Record<Expense['recurrence'], number> = {
 
 export function ExpensesScreen() {
   const { data: expenses = [] } = useExpenses();
+  const { data: categories = [] } = useExpenseCategories();
   const createMut = useCreateExpense();
   const updateMut = useUpdateExpense();
   const deleteMut = useDeleteExpense();
 
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('All');
-  const [filterCategory, setFilterCategory] = useState<'All' | ExpenseCategory>('All');
+  const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [search, setSearch] = useState('');
@@ -52,7 +54,6 @@ export function ExpensesScreen() {
     const q = search.toLowerCase();
     return (
       e.id.toLowerCase().includes(q) ||
-      e.payee.toLowerCase().includes(q) ||
       (e.entity?.toLowerCase().includes(q) ?? false) ||
       (e.reference?.toLowerCase().includes(q) ?? false) ||
       (e.notes?.toLowerCase().includes(q) ?? false)
@@ -150,7 +151,7 @@ export function ExpensesScreen() {
         onFilterChange={(f) => setFilterStatus(f as StatusFilter)}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search ref / payee / entity / notes…"
+        searchPlaceholder="Search ref / entity / notes…"
         primaryLabel="+ New Expense"
         onPrimary={() => setModal('new')}
         extra={
@@ -186,11 +187,11 @@ export function ExpensesScreen() {
           <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Category</span>
           <select
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value as typeof filterCategory)}
+            onChange={(e) => setFilterCategory(e.target.value)}
             style={selectStyle(filterCategory !== 'All')}
           >
             <option value="All">All</option>
-            {EXPENSE_CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -261,7 +262,7 @@ export function ExpensesScreen() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: C.seasalt }}>
-                  {['Ref', 'Date', 'Category', 'Payee', 'Entity', 'Amount', 'Status', 'Files'].map((h) => (
+                  {['Ref', 'Date', 'Category', 'Entity', 'Amount', 'Status', 'Files'].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -296,8 +297,7 @@ export function ExpensesScreen() {
                         {e.category}
                       </span>
                     </td>
-                    <td style={{ padding: '13px 16px', fontWeight: 600 }}>{e.payee}</td>
-                    <td style={{ padding: '13px 16px', color: C.slate }}>{e.entity ?? <span style={{ fontStyle: 'italic' }}>—</span>}</td>
+                    <td style={{ padding: '13px 16px', fontWeight: 600 }}>{e.entity ?? <span style={{ fontStyle: 'italic', color: C.slate }}>—</span>}</td>
                     <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{formatRM(Number(e.amount), 2)}</td>
                     <td style={{ padding: '13px 16px' }} onClick={(ev) => ev.stopPropagation()}>
                       <StatusSelect current={e.status} onChange={(s) => handleInlineStatusChange(e, s)} />
@@ -372,7 +372,7 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{expense.id}</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a1a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {expense.payee}
+            {expense.entity ?? <span style={{ fontStyle: 'italic', color: C.slate, fontWeight: 500 }}>No entity</span>}
           </div>
         </div>
         <span
@@ -394,7 +394,6 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
 
       <div style={{ fontSize: 12, color: C.slate }}>
         {expense.category}
-        {expense.entity && <> · <strong style={{ color: '#1a1a1a' }}>{expense.entity}</strong></>}
       </div>
 
       <div style={{ fontSize: 18, fontWeight: 800, color: C.green, letterSpacing: '-0.02em' }}>

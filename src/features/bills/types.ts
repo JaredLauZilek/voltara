@@ -4,12 +4,6 @@ export type Bill = Database['public']['Tables']['bills']['Row'];
 export type BillInsert = Database['public']['Tables']['bills']['Insert'];
 export type BillUpdate = Database['public']['Tables']['bills']['Update'];
 
-export const BILL_CATEGORIES = [
-  'Materials', 'Installation', 'Labour', 'Equipment', 'Transport',
-  'Subcontractor', 'Professional Fees', 'Utilities', 'Maintenance', 'Other',
-] as const;
-export type BillCategory = typeof BILL_CATEGORIES[number];
-
 export const BILL_STATUSES = ['Unpaid', 'Paid', 'Overdue', 'Disputed'] as const;
 export type BillStatus = typeof BILL_STATUSES[number];
 

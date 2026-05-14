@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
+import { supabase } from '@/shared/lib/supabase';
 import { AttachmentsField } from '@/shared/components/AttachmentsField';
 import { SupplierPicker } from '@/features/suppliers';
 import { useSuppliers } from '@/features/suppliers';
 import { todayISO } from '@/shared/lib/format';
-import { BILL_CATEGORIES, BILL_STATUSES, BILL_PAYMENT_METHODS, BILL_CURRENCIES } from './types';
+import { BILL_STATUSES, BILL_PAYMENT_METHODS, BILL_CURRENCIES } from './types';
+import { BillCategoryPicker } from './BillCategoryPicker';
+import { InvoicePrefillField } from './components/InvoicePrefillField';
+import type { ParsedInvoice } from './lib/parseInvoice';
 import type { BillCurrency } from './types';
 import type { Bill, BillInsert } from './types';
+import type { Attachment } from '@/shared/types';
 
 interface Props {
   bill: Bill | null;
@@ -67,7 +72,59 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
 
   const handleSupplierChange = (id: string) => {
     const s = suppliers.find((x) => x.id === id);
-    setForm((f) => ({ ...f, supplier_id: id, vendor: s?.name ?? f.vendor }));
+    setForm((f) => {
+      const next: BillInsert = { ...f, supplier_id: id, vendor: s?.name ?? f.vendor };
+      // Auto-derive due_date from the supplier's payment terms when one isn't
+      // already set — never overwrite a date the user has typed in manually.
+      if (!f.due_date) {
+        const derived = dueDateFromTerms(f.bill_date, s?.payment_terms);
+        if (derived) next.due_date = derived;
+      }
+      return next;
+    });
+  };
+
+  /** Wire the invoice-prefill output into the form. Only overwrites a field
+   *  when the parser produced a value, so user edits don't get clobbered if
+   *  they uploaded → tweaked → re-uploaded. */
+  const handleInvoiceApply = ({ fields, attachment }: { fields: ParsedInvoice; attachment: Attachment }) => {
+    setForm((f) => {
+      const next: BillInsert = { ...f };
+      if (fields.amount !== null)     next.amount = fields.amount;
+      if (fields.tax !== null)        next.tax = fields.tax;
+      if (fields.currency)            next.currency = fields.currency;
+      if (fields.bill_date)           next.bill_date = fields.bill_date;
+      if (fields.due_date)            next.due_date = fields.due_date;
+      if (fields.reference)           next.reference = fields.reference;
+      if (fields.supplier_id) {
+        next.supplier_id = fields.supplier_id;
+        const s = suppliers.find((x) => x.id === fields.supplier_id);
+        if (s) next.vendor = s.name;
+        // If the invoice didn't carry an explicit due date, fall back to the
+        // supplier's payment-terms-derived one.
+        if (!next.due_date && s?.payment_terms) {
+          const derived = dueDateFromTerms(next.bill_date, s.payment_terms);
+          if (derived) next.due_date = derived;
+        }
+      } else if (fields.vendor_guess) {
+        next.vendor = fields.vendor_guess;
+      }
+      next.attachments = [attachment, ...(f.attachments ?? []).slice(1)];
+      return next;
+    });
+  };
+
+  const handleInvoiceClear = async () => {
+    // Remove the current primary attachment from Storage to avoid orphan files.
+    const head = form.attachments?.[0];
+    if (head) {
+      try {
+        await supabase.storage.from('attachments').remove([head.storage_path]);
+      } catch {
+        // Non-fatal — file might already be gone.
+      }
+    }
+    setForm((f) => ({ ...f, attachments: (f.attachments ?? []).slice(1) }));
   };
 
   const handleStatusChange = (s: Bill['status']) => {
@@ -83,6 +140,14 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
 
   return (
     <Modal title={isNew ? 'New Bill' : bill.id} onClose={onClose}>
+      {/* Vendor invoice — drop here to auto-fill the fields below */}
+      <InvoicePrefillField
+        storagePath={`bills/${form.id}`}
+        attached={form.attachments?.[0] ?? null}
+        onApply={handleInvoiceApply}
+        onClear={handleInvoiceClear}
+      />
+
       {/* Dates */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
@@ -108,9 +173,10 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
       {/* Category */}
       <div>
         <label style={labelStyle}>Category</label>
-        <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Bill['category'] }))} style={inputStyle}>
-          {BILL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <BillCategoryPicker
+          value={form.category}
+          onChange={(name) => setForm((f) => ({ ...f, category: name }))}
+        />
       </div>
 
       {/* Supplier */}
@@ -204,14 +270,17 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
         )}
       </div>
 
-      {/* Attachments */}
+      {/* Attachments — manual multi-file upload (works alongside the prefill
+          drop-zone at the top of the modal). Both fields read/write the same
+          form.attachments array, so an invoice applied via prefill shows up
+          here too and can be removed from either place. */}
       <div>
-        <label style={labelStyle}>Vendor Invoice Attachments</label>
+        <label style={labelStyle}>Attachments</label>
         <AttachmentsField
           value={form.attachments ?? []}
           onChange={(next) => setForm((f) => ({ ...f, attachments: next }))}
           storagePath={`bills/${form.id}`}
-          label="invoice"
+          label="file"
         />
       </div>
 
@@ -250,4 +319,32 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
       </div>
     </Modal>
   );
+}
+
+/** Extracts a payment-term length in days from a free-text terms string.
+ *  Accepts: "Net 30", "30 days", "Due in 14 days", "COD", "Due on receipt",
+ *  "Immediate", "PIA". Returns null when the string can't be confidently
+ *  interpreted, so callers can leave due_date alone. */
+function paymentTermsDays(terms: string | null | undefined): number | null {
+  if (!terms) return null;
+  const s = terms.toLowerCase().trim();
+  if (/\b(cod|due\s*on\s*receipt|immediate|on\s*receipt|pia|prepaid|paid\s*in\s*advance)\b/.test(s)) {
+    return 0;
+  }
+  const m = s.match(/(\d{1,3})/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (!Number.isFinite(n) || n < 0 || n > 365) return null;
+  return n;
+}
+
+/** Adds `paymentTermsDays(terms)` to `billDate` (ISO YYYY-MM-DD) and returns
+ *  the result as ISO, or null if we can't compute one. */
+function dueDateFromTerms(billDate: string, terms: string | null | undefined): string | null {
+  const days = paymentTermsDays(terms);
+  if (days === null) return null;
+  const d = new Date(billDate);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }

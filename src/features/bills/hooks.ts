@@ -32,3 +32,25 @@ export function useDeleteBill() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+const CAT_KEY = ['bill_categories'] as const;
+
+export function useBillCategories() {
+  return useQuery({ queryKey: CAT_KEY, queryFn: api.listBillCategories });
+}
+
+export function useCreateBillCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.createBillCategory(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CAT_KEY }),
+  });
+}
+
+export function useDeleteBillCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.deleteBillCategory(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CAT_KEY }),
+  });
+}

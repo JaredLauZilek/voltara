@@ -26,3 +26,39 @@ export async function deleteExpense(id: string, attachments: Attachment[]): Prom
   const { error } = await supabase.from('expenses').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ── expense_entities ───────────────────────────────────────────────────────
+
+export async function listExpenseEntities(): Promise<string[]> {
+  const { data, error } = await supabase.from('expense_entities').select('name').order('name');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function createExpenseEntity(name: string): Promise<void> {
+  const { error } = await supabase.from('expense_entities').insert({ name });
+  if (error) throw error;
+}
+
+export async function deleteExpenseEntity(name: string): Promise<void> {
+  const { error } = await supabase.from('expense_entities').delete().eq('name', name);
+  if (error) throw error;
+}
+
+// ── expense_categories ─────────────────────────────────────────────────────
+
+export async function listExpenseCategories(): Promise<string[]> {
+  const { data, error } = await supabase.from('expense_categories').select('name').order('name');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function createExpenseCategory(name: string): Promise<void> {
+  const { error } = await supabase.from('expense_categories').insert({ name });
+  if (error) throw error;
+}
+
+export async function deleteExpenseCategory(name: string): Promise<void> {
+  const { error } = await supabase.from('expense_categories').delete().eq('name', name);
+  if (error) throw error;
+}

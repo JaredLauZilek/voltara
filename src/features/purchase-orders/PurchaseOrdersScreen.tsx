@@ -5,6 +5,7 @@ import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { formatRMShort, pdfFilename } from '@/shared/lib/format';
+import { toMYR } from '@/shared/lib/currency';
 import { useSuppliers } from '@/features/suppliers';
 import { useProducts } from '@/features/products';
 import { useCompanyProfile, useDesign } from '@/features/form-designs';
@@ -72,7 +73,15 @@ export function PurchaseOrdersScreen() {
     return `${p.id} ${supplierName}`.toLowerCase().includes(search.toLowerCase());
   });
 
-  const totalValue = pos.reduce((s, p) => s + calcPOTotal(p.line_items, p.discount), 0);
+  // Convert each PO's total to MYR using the static rate table in
+  // shared/lib/currency.ts, then sum. Edit the rates there to refresh.
+  const totalValueMYR = pos.reduce(
+    (s, p) => s + toMYR(calcPOTotal(p.line_items, p.discount), p.currency),
+    0,
+  );
+  const distinctCurrencies = new Set(pos.map((p) => p.currency ?? 'RM'));
+  const usesMultipleCurrencies = distinctCurrencies.size > 1;
+
   const activeOrders = pos.filter((p) => ['Draft', 'Submitted', 'Approved'].includes(p.status)).length;
   const pendingDelivery = pos.filter((p) => p.status === 'Approved' || p.status === 'Submitted').length;
   const awaitingApproval = pos.filter((p) => p.status === 'Submitted').length;
@@ -90,7 +99,12 @@ export function PurchaseOrdersScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Total PO Value" value={formatRMShort(totalValue)} sub="To suppliers" accent />
+        <KPICard
+          label="Total PO Value"
+          value={formatRMShort(totalValueMYR)}
+          sub={usesMultipleCurrencies ? 'Converted to RM (static rates)' : 'To suppliers'}
+          accent
+        />
         <KPICard label="Active Orders" value={activeOrders} sub="Draft + submitted + approved" />
         <KPICard label="Pending Delivery" value={pendingDelivery} sub="Submitted + approved" />
         <KPICard label="Awaiting Approval" value={awaitingApproval} sub="Submitted" />
@@ -250,3 +264,4 @@ function POStatusSelect({
     </div>
   );
 }
+

@@ -208,14 +208,24 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['purchase_orders']['Row'], 'created_at' | 'currency'> & { created_at?: string; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
         Update: Partial<Database['public']['Tables']['purchase_orders']['Insert']>;
       };
+      expense_entities: {
+        Row: { name: string; created_at: string };
+        Insert: { name: string; created_at?: string };
+        Update: Partial<{ name: string; created_at: string }>;
+      };
+      expense_categories: {
+        Row: { name: string; created_at: string };
+        Insert: { name: string; created_at?: string };
+        Update: Partial<{ name: string; created_at: string }>;
+      };
       expenses: {
         Row: {
           id: string;
           expense_date: string;
-          category:
-            | 'Rent' | 'Utilities' | 'Salary' | 'Reimbursement' | 'Subscription'
-            | 'Office' | 'Travel' | 'Marketing' | 'Insurance' | 'Tax' | 'Maintenance' | 'Other';
-          payee: string;
+          // Free-text — validated by the expense_categories lookup table at the
+          // app level, not by a CHECK constraint (dropped in migration 0046).
+          category: string;
+          payee: string | null;
           payee_email: string | null;
           supplier_id: string | null;
           entity: string | null;
@@ -488,12 +498,19 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['email_designs']['Insert']>;
       };
+      bill_categories: {
+        Row: { name: string; created_at: string };
+        Insert: { name: string; created_at?: string };
+        Update: Partial<{ name: string; created_at: string }>;
+      };
       bills: {
         Row: {
           id: string;
           bill_date: string;
           due_date: string | null;
-          category: 'Materials' | 'Installation' | 'Labour' | 'Equipment' | 'Transport' | 'Subcontractor' | 'Professional Fees' | 'Utilities' | 'Maintenance' | 'Other';
+          // Free-text — validated by the bill_categories lookup table at the
+          // app level, not by a CHECK constraint (dropped in migration 0044).
+          category: string;
           vendor: string;
           vendor_email: string | null;
           supplier_id: string | null;

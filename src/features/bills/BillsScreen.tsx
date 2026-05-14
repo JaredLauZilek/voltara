@@ -4,13 +4,15 @@ import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { formatRMShort } from '@/shared/lib/format';
-import { useBills, useCreateBill, useUpdateBill, useDeleteBill } from './hooks';
+import { toMYR } from '@/shared/lib/currency';
+import { useBills, useCreateBill, useUpdateBill, useDeleteBill, useBillCategories } from './hooks';
 import { BillModal } from './BillModal';
-import { BILL_STATUSES, BILL_CATEGORIES } from './types';
+import { BILL_STATUSES } from './types';
 import type { Bill, BillInsert } from './types';
 
 export function BillsScreen() {
   const { data: bills = [] } = useBills();
+  const { data: billCategories = [] } = useBillCategories();
   const createMut = useCreateBill();
   const updateMut = useUpdateBill();
   const deleteMut = useDeleteBill();
@@ -29,10 +31,13 @@ export function BillsScreen() {
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const thisYear = String(now.getFullYear());
 
-  const unpaidTotal = bills.filter((b) => b.status === 'Unpaid').reduce((s, b) => s + b.amount, 0);
-  const paidThisMonth = bills.filter((b) => b.status === 'Paid' && b.paid_on?.startsWith(thisMonth)).reduce((s, b) => s + b.amount, 0);
+  // KPI totals are converted to MYR via the static rate table in
+  // shared/lib/currency.ts so multi-currency bills sum to a meaningful number.
+  const unpaidTotal = bills.filter((b) => b.status === 'Unpaid').reduce((s, b) => s + toMYR(b.amount, b.currency), 0);
+  const paidThisMonth = bills.filter((b) => b.status === 'Paid' && b.paid_on?.startsWith(thisMonth)).reduce((s, b) => s + toMYR(b.amount, b.currency), 0);
   const overdueCount = bills.filter((b) => b.status === 'Overdue').length;
-  const ytdCogs = bills.filter((b) => b.status === 'Paid' && b.paid_on?.startsWith(thisYear)).reduce((s, b) => s + b.amount, 0);
+  const ytdCogs = bills.filter((b) => b.status === 'Paid' && b.paid_on?.startsWith(thisYear)).reduce((s, b) => s + toMYR(b.amount, b.currency), 0);
+  const usesMultipleCurrencies = new Set(bills.map((b) => b.currency ?? 'RM')).size > 1;
 
   const filtered = bills.filter((b) => {
     if (filterStatus !== 'All' && b.status !== filterStatus) return false;
@@ -54,10 +59,23 @@ export function BillsScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Unpaid Bills" value={formatRMShort(unpaidTotal)} sub="Total outstanding" accent />
-        <KPICard label="Paid This Month" value={formatRMShort(paidThisMonth)} sub="Settled in current month" />
+        <KPICard
+          label="Unpaid Bills"
+          value={formatRMShort(unpaidTotal)}
+          sub={usesMultipleCurrencies ? 'Total outstanding · converted to RM' : 'Total outstanding'}
+          accent
+        />
+        <KPICard
+          label="Paid This Month"
+          value={formatRMShort(paidThisMonth)}
+          sub={usesMultipleCurrencies ? 'Settled in current month · RM eq.' : 'Settled in current month'}
+        />
         <KPICard label="Overdue" value={overdueCount} sub="Past due date" />
-        <KPICard label="COGS YTD" value={formatRMShort(ytdCogs)} sub="Paid bills this year" />
+        <KPICard
+          label="COGS YTD"
+          value={formatRMShort(ytdCogs)}
+          sub={usesMultipleCurrencies ? 'Paid bills this year · RM eq.' : 'Paid bills this year'}
+        />
       </div>
 
       <Toolbar
@@ -81,7 +99,7 @@ export function BillsScreen() {
             style={{ padding: '7px 10px', borderRadius: 10, border: `1px solid ${filterCategory ? C.green : C.border}`, fontFamily: 'Figtree', fontSize: 13, color: filterCategory ? C.green : C.slate, fontWeight: filterCategory ? 700 : 500, background: filterCategory ? C.honeydew : C.white, outline: 'none', cursor: 'pointer' }}
           >
             <option value="">All categories</option>
-            {BILL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {billCategories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 

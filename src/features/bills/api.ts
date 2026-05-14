@@ -26,3 +26,21 @@ export async function deleteBill(id: string, attachments: Attachment[]): Promise
   const { error } = await supabase.from('bills').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ── bill_categories ────────────────────────────────────────────────────────
+
+export async function listBillCategories(): Promise<string[]> {
+  const { data, error } = await supabase.from('bill_categories').select('name').order('name');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function createBillCategory(name: string): Promise<void> {
+  const { error } = await supabase.from('bill_categories').insert({ name });
+  if (error) throw error;
+}
+
+export async function deleteBillCategory(name: string): Promise<void> {
+  const { error } = await supabase.from('bill_categories').delete().eq('name', name);
+  if (error) throw error;
+}
