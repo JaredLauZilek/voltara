@@ -91,13 +91,15 @@ export interface Database {
           quote_id: string | null;
           tech: string;
           scheduled: string;
+          scheduled_time: string | null;
           status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue' | 'Cancelled';
           notes: string | null;
           qty_overrides: Record<string, number>;
         };
-        Insert: Omit<Database['public']['Tables']['installations']['Row'], 'product_id' | 'quote_id' | 'notes' | 'qty_overrides'> & {
+        Insert: Omit<Database['public']['Tables']['installations']['Row'], 'product_id' | 'quote_id' | 'notes' | 'qty_overrides' | 'scheduled_time'> & {
           product_id?: string | null;
           quote_id?: string | null;
+          scheduled_time?: string | null;
           notes?: string | null;
           qty_overrides?: Record<string, number>;
         };

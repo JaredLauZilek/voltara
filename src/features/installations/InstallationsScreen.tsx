@@ -42,6 +42,31 @@ export function InstallationsScreen() {
   const [printRow, setPrintRow] = useState<Installation | null>(null);
   const [shareRow, setShareRow] = useState<Installation | null>(null);
   const [emailRow, setEmailRow] = useState<Installation | null>(null);
+  // The id of the row whose Copy button was just clicked — flashes "Copied!"
+  // for ~1.5s, then resets. null means no flash showing.
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyBrief = async (r: Installation) => {
+    const customer = customerById.get(r.customer_id);
+    // scheduled_time comes back as HH:MM:SS; trim to HH:MM for the brief.
+    const time = r.scheduled_time ? r.scheduled_time.slice(0, 5) : '';
+    const text = [
+      `Date: ${r.scheduled ?? ''}`,
+      `Time: ${time}`,
+      `Installation Address: ${customer?.address ?? ''}`,
+      `Customer Name: ${customer?.name ?? ''}`,
+      `Site Contact: ${customer?.phone ?? ''}`,
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(r.id);
+      setTimeout(() => setCopiedId((cur) => (cur === r.id ? null : cur)), 1500);
+    } catch {
+      // Clipboard API can fail in non-secure contexts; fall back to prompt
+      // so the user can still grab the text manually.
+      window.prompt('Copy the installation brief:', text);
+    }
+  };
 
   const completed = installations.filter((i) => i.status === 'Completed').length;
   const overdue = installations.filter((i) => i.status === 'Overdue').length;
@@ -170,6 +195,24 @@ export function InstallationsScreen() {
                     </td>
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => handleCopyBrief(r)}
+                          title="Copy date / address / customer / contact for the contractor"
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: 8,
+                            border: `1px solid ${copiedId === r.id ? C.green : C.border}`,
+                            background: copiedId === r.id ? C.honeydew : C.white,
+                            color: C.green,
+                            fontFamily: 'Figtree',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {copiedId === r.id ? '✓ Copied' : '⧉ Copy'}
+                        </button>
                         {r.status === 'Completed' && profile && design ? (
                           <>
                             <button

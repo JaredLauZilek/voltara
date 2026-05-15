@@ -66,11 +66,21 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
       quote_id: null,
       tech: '',
       scheduled: todayISO(),
+      scheduled_time: null,
       status: 'Pending',
       notes: null,
       qty_overrides: {},
     }
   );
+
+  // 48 half-hour slots, "00:00" … "23:30". Stored as HH:MM:SS by Postgres
+  // 'time' type so we accept either form on read (slice to HH:MM for compare).
+  const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
+    const h = Math.floor(i / 2);
+    const m = i % 2 === 0 ? '00' : '30';
+    return `${String(h).padStart(2, '0')}:${m}`;
+  });
+  const currentTime = (form.scheduled_time ?? '').slice(0, 5); // strip seconds
 
   const setOverride = (index: number, value: number, originalQty: number) => {
     setForm((f) => {
@@ -219,7 +229,7 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
+        <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Contractor</label>
           <SearchableSelect
             options={contractors.map((c) => ({ value: c.name, label: c.name, meta: c.category }))}
@@ -230,14 +240,27 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
             nullLabel="— Select a contractor —"
           />
         </div>
-        <div>
+        <div style={{ gridColumn: '1/-1' }}>
           <label style={labelStyle}>Scheduled Date</label>
-          <input
-            type="date"
-            value={form.scheduled}
-            onChange={(e) => setForm((f) => ({ ...f, scheduled: e.target.value }))}
-            style={inputStyle}
-          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="date"
+              value={form.scheduled}
+              onChange={(e) => setForm((f) => ({ ...f, scheduled: e.target.value }))}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <select
+              value={currentTime}
+              onChange={(e) => setForm((f) => ({ ...f, scheduled_time: e.target.value || null }))}
+              style={{ ...inputStyle, width: 140, flexShrink: 0, paddingRight: 28 }}
+              title="Time (30-min increments)"
+            >
+              <option value="">— time —</option>
+              {TIME_SLOTS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div style={{ gridColumn: '1/-1' }}>
@@ -275,7 +298,7 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || null }))}
             rows={3}
             placeholder="Access instructions, parking, contact on site…"
-            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+            style={{ ...inputStyle, padding: '10px 12px', resize: 'vertical', lineHeight: 1.45, fontFamily: 'Figtree' }}
           />
         </div>
       </div>
