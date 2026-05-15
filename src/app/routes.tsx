@@ -18,6 +18,7 @@ import { SEOMonitorScreen } from '@/features/seo';
 import { FormDesignsScreen } from '@/features/form-designs';
 import { EmailDesignsScreen } from '@/features/email-designs';
 import { ExportsScreen } from '@/features/exports';
+import { SnapshotsScreen } from '@/features/snapshots';
 import { SupabaseHealthScreen } from '@/features/supabase-health';
 
 export const ROUTES: Record<ScreenId, ReactNode> = {
@@ -39,5 +40,6 @@ export const ROUTES: Record<ScreenId, ReactNode> = {
   formdesigns:    <FormDesignsScreen />,
   emaildesigns:   <EmailDesignsScreen />,
   exports:        <ExportsScreen />,
+  snapshots:      <SnapshotsScreen />,
   supabasehealth: <SupabaseHealthScreen />,
 };

@@ -12,13 +12,21 @@ import { useSuppliers } from '@/features/suppliers';
 import { useProducts } from '@/features/products';
 import { useDesign } from '@/features/form-designs';
 import { buildExportZip, type BuildProgress } from './builder';
-import { makePeriod, currentQuarter, type Quarter, inPeriod } from './period';
+import { makePeriod, currentMonth, type Month, inPeriod } from './period';
 
-const QUARTERS: { id: Quarter; label: string }[] = [
-  { id: 1, label: 'Q1 (Jan–Mar)' },
-  { id: 2, label: 'Q2 (Apr–Jun)' },
-  { id: 3, label: 'Q3 (Jul–Sep)' },
-  { id: 4, label: 'Q4 (Oct–Dec)' },
+const MONTHS: { id: Month; label: string }[] = [
+  { id: 1,  label: 'January'   },
+  { id: 2,  label: 'February'  },
+  { id: 3,  label: 'March'     },
+  { id: 4,  label: 'April'     },
+  { id: 5,  label: 'May'       },
+  { id: 6,  label: 'June'      },
+  { id: 7,  label: 'July'      },
+  { id: 8,  label: 'August'    },
+  { id: 9,  label: 'September' },
+  { id: 10, label: 'October'   },
+  { id: 11, label: 'November'  },
+  { id: 12, label: 'December'  },
 ];
 
 const labelStyle: React.CSSProperties = {
@@ -53,13 +61,13 @@ export function ExportsScreen() {
   const invoiceDesign = useDesign('invoice');
   const poDesign = useDesign('purchase_order');
 
-  const initial = currentQuarter();
+  const initial = currentMonth();
   const [year, setYear] = useState(initial.year);
-  const [quarter, setQuarter] = useState<Quarter>(initial.quarter);
+  const [month, setMonth] = useState<Month>(initial.month);
   const [progress, setProgress] = useState<BuildProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const period = useMemo(() => makePeriod(year, quarter), [year, quarter]);
+  const period = useMemo(() => makePeriod(year, month), [year, month]);
 
   // Period-scoped previews so the user knows what they're about to export.
   const previewCounts = useMemo(() => {
@@ -125,27 +133,27 @@ export function ExportsScreen() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <KPICard label={`Invoices in ${period.label}`} value={previewCounts.invoices} sub="Will render PDF" accent />
         <KPICard label="Bills" value={previewCounts.bills} sub={`${previewCounts.attachments} attachments`} />
-        <KPICard label="Expenses" value={previewCounts.expenses} sub="With attachments" />
+        <KPICard label="Expenses" value={previewCounts.expenses} sub={`${previewCounts.expenses} rows`} />
         <KPICard label="PDF renders" value={previewCounts.pdfRenders} sub="Invoices + POs" />
       </div>
 
       <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, padding: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.green, marginBottom: 4 }}>Quarterly export</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.green, marginBottom: 4 }}>Monthly export</div>
         <div style={{ fontSize: 12, color: C.slate, marginBottom: 18 }}>
-          Bundles invoices, bills, expenses, POs, master data, and the matching attachments and PDFs
-          into a single ZIP for your accountant. Period: <strong>{period.startISO} → {period.endISO}</strong>.
+          Bundles invoices, invoice payments, bills, expenses, POs, master data, and the matching
+          attachments and PDFs into a single ZIP for your accountant. Period: <strong>{period.startISO} → {period.endISO}</strong>.
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 480 }}>
           <div>
-            <label style={labelStyle}>Quarter</label>
+            <label style={labelStyle}>Month</label>
             <select
-              value={quarter}
-              onChange={(e) => setQuarter(parseInt(e.target.value, 10) as Quarter)}
+              value={month}
+              onChange={(e) => setMonth(parseInt(e.target.value, 10) as Month)}
               style={inputStyle}
               disabled={isRunning}
             >
-              {QUARTERS.map((q) => <option key={q.id} value={q.id}>{q.label}</option>)}
+              {MONTHS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </div>
           <div>
@@ -205,9 +213,10 @@ export function ExportsScreen() {
       </div>
 
       <div style={{ background: C.seasalt, borderRadius: 12, padding: '14px 18px', fontSize: 12, color: C.slate, lineHeight: 1.6 }}>
-        <strong style={{ color: C.green }}>Folder layout</strong> &middot; 01-financial-summary &middot; 02-revenue (invoices + PDFs) &middot;
-        03-cogs (bills, attachments, PO PDFs) &middot; 04-expenses (CSV + attachments) &middot;
-        05-master-data (customers, suppliers, products) &middot; 06-sales-pipeline (quotations).
+        <strong style={{ color: C.green }}>Folder layout</strong> &middot; 01-financial-summary (P&amp;L + AR/AP with paid/outstanding) &middot;
+        02-revenue (invoices, invoice payments, PDFs) &middot; 03-cogs (bills, attachments, PO PDFs) &middot;
+        04-expenses (CSV + attachments) &middot; 05-master-data (customers, suppliers, products) &middot;
+        06-sales-pipeline (quotations).
       </div>
     </div>
   );

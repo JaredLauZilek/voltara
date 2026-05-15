@@ -148,7 +148,9 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
   const handleStatusChange = (status: ExpenseStatus) => {
     setForm((f) => {
       const patch: Partial<ExpenseInsert> = { status };
-      if (status === 'Paid' && !f.paid_on) patch.paid_on = todayISO();
+      // Default Paid-on to the expense date (the date on the invoice) rather
+      // than today — that's almost always what bookkeeping actually wants.
+      if (status === 'Paid' && !f.paid_on) patch.paid_on = f.expense_date || todayISO();
       if (status !== 'Paid') patch.paid_on = null;
       return { ...f, ...patch };
     });
@@ -166,7 +168,12 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
         attachments: [attachment, ...(f.attachments ?? [])],
       };
       if (fields.amount !== null) next.amount = fields.amount;
-      if (fields.expense_date) next.expense_date = fields.expense_date;
+      if (fields.expense_date) {
+        next.expense_date = fields.expense_date;
+        // Paid invoices are typically paid the same day they're dated — keep
+        // paid_on in sync when prefilling, unless the user already set one.
+        if (next.status === 'Paid' && !f.paid_on) next.paid_on = fields.expense_date;
+      }
       if (fields.reference) next.reference = fields.reference;
       if (fields.entity) next.entity = fields.entity;
       if (fields.category) next.category = fields.category;
@@ -252,7 +259,17 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
           <input
             type="date"
             value={form.expense_date}
-            onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
+            onChange={(e) => setForm((f) => {
+              const next = e.target.value;
+              // Slide Paid-on along with Expense Date while it's still mirroring
+              // the previous value (the user hasn't intentionally diverged it).
+              const shouldSlidePaidOn = f.status === 'Paid' && f.paid_on === f.expense_date;
+              return {
+                ...f,
+                expense_date: next,
+                paid_on: shouldSlidePaidOn ? next : f.paid_on,
+              };
+            })}
             style={inputStyle}
           />
         </div>

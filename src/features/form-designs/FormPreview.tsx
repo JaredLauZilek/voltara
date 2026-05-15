@@ -24,6 +24,7 @@ const TITLE_BY_TYPE: Record<DocType, string> = {
   quote:           'QUOTATION',
   delivery_order:  'DELIVERY ORDER',
   purchase_order:  'PURCHASE ORDER',
+  receipt:         'OFFICIAL RECEIPT',
 };
 
 const REF_BY_TYPE: Record<DocType, string> = {
@@ -31,6 +32,7 @@ const REF_BY_TYPE: Record<DocType, string> = {
   quote:           'Q-2026-018',
   delivery_order:  'DO-2026-009',
   purchase_order:  'PO-2026-014',
+  receipt:         'INV-2026-0042',
 };
 
 export function FormPreview({ profile, design, docType }: Props) {

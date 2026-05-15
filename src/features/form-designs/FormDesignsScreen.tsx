@@ -6,6 +6,12 @@ import { BrandingPanel } from './BrandingPanel';
 import { DocDesignPanel } from './DocDesignPanel';
 import { FormPreview } from './FormPreview';
 import { DEFAULT_COLUMN_VISIBILITY, DOC_TYPES } from './types';
+
+// Receipts inherit the invoice form-design (heading swap is handled in the
+// renderer), so they don't appear as their own tab here. They show up in the
+// Email Designs UI because the email body really is different (thank-you vs
+// "please pay").
+const FORM_DESIGN_TABS = DOC_TYPES.filter((t) => t.id !== 'receipt');
 import type { CompanyProfile, FormDesign, DocType } from './types';
 
 const isDesignDefault = (d: FormDesign): boolean =>
@@ -30,7 +36,7 @@ export function FormDesignsScreen() {
   const [docType, setDocType] = useState<DocType>('invoice');
   const [profileDraft, setProfileDraft] = useState<CompanyProfile | null>(null);
   const [designDrafts, setDesignDrafts] = useState<Record<DocType, FormDesign | undefined>>({
-    invoice: undefined, quote: undefined, delivery_order: undefined, purchase_order: undefined,
+    invoice: undefined, quote: undefined, delivery_order: undefined, purchase_order: undefined, receipt: undefined,
   });
 
   // Hydrate drafts from server data once it arrives
@@ -116,7 +122,7 @@ export function FormDesignsScreen() {
         <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 6 }}>
           Document Type
         </span>
-        {DOC_TYPES.map((t) => {
+        {FORM_DESIGN_TABS.map((t) => {
           const saved = designsQ.data?.find((d) => d.doc_type === t.id);
           const modified = saved && !isDesignDefault(saved);
           const active = docType === t.id;

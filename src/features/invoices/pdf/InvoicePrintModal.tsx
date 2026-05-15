@@ -12,9 +12,12 @@ import type { Invoice } from '../types';
 interface Props {
   invoice: Invoice;
   onClose: () => void;
+  variant?: 'invoice' | 'receipt';
 }
 
-export function InvoicePrintModal({ invoice, onClose }: Props) {
+export function InvoicePrintModal({ invoice, onClose, variant = 'invoice' }: Props) {
+  const isReceipt = variant === 'receipt';
+  const heading = isReceipt ? 'Receipt' : 'Invoice';
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { profile, design, isLoading } = useDesign('invoice');
@@ -41,11 +44,12 @@ export function InvoicePrintModal({ invoice, onClose }: Props) {
         profile={profile}
         design={design}
         payments={payments}
+        variant={variant}
       />
     );
-  }, [ready, invoice, customer, products, profile, design, payments]);
+  }, [ready, invoice, customer, products, profile, design, payments, variant]);
 
-  const filename = pdfFilename(invoice.id, customer?.name);
+  const filename = pdfFilename(`${isReceipt ? 'RECEIPT-' : ''}${invoice.id}`, customer?.name);
 
   return (
     <div
@@ -65,7 +69,7 @@ export function InvoicePrintModal({ invoice, onClose }: Props) {
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 700, color: C.white }}>
-          Invoice — {invoice.id}
+          {heading} — {invoice.id}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {ready && docElement && (

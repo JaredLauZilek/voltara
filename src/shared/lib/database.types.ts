@@ -419,7 +419,7 @@ export interface Database {
       };
       form_designs: {
         Row: {
-          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order';
+          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order' | 'receipt';
           accent_color: string | null;
           header_note: string | null;
           footer_text: string | null;
@@ -472,7 +472,7 @@ export interface Database {
       };
       email_designs: {
         Row: {
-          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order';
+          doc_type: 'invoice' | 'quote' | 'delivery_order' | 'purchase_order' | 'receipt';
           from_name: string | null;
           from_address: string | null;
           reply_to: string | null;
@@ -624,6 +624,31 @@ export interface Database {
           prior_pos: number | null;
           delta: number | null;
         };
+      };
+      snapshot_meta: {
+        Row: {
+          id: number;
+          taken_at: string;
+          storage_path: string;
+          bytes: number | null;
+          table_counts: Record<string, number> | null;
+          trigger: 'cron' | 'manual';
+          status: 'pending' | 'completed' | 'failed';
+          error: string | null;
+          duration_ms: number | null;
+        };
+        Insert: {
+          id?: number;
+          taken_at?: string;
+          storage_path: string;
+          bytes?: number | null;
+          table_counts?: Record<string, number> | null;
+          trigger: 'cron' | 'manual';
+          status?: 'pending' | 'completed' | 'failed';
+          error?: string | null;
+          duration_ms?: number | null;
+        };
+        Update: Partial<Database['public']['Tables']['snapshot_meta']['Insert']>;
       };
     };
     Functions: Record<string, never>;

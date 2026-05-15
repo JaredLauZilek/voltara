@@ -21,6 +21,7 @@ import {
   Mail,
   Download,
   Activity,
+  Archive,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,6 +44,7 @@ export type ScreenId =
   | 'formdesigns'
   | 'emaildesigns'
   | 'exports'
+  | 'snapshots'
   | 'supabasehealth';
 
 export interface NavEntry {
@@ -108,6 +110,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { id: 'formdesigns',    icon: LayoutTemplate, label: 'Form Designs' },
       { id: 'emaildesigns',   icon: Mail,           label: 'Email Designs' },
       { id: 'exports',        icon: Download,       label: 'Exports' },
+      { id: 'snapshots',      icon: Archive,        label: 'Snapshots' },
       { id: 'supabasehealth', icon: Activity,       label: 'System Health' },
     ],
   },
@@ -132,5 +135,6 @@ export const SCREEN_TITLES: Record<ScreenId, string> = {
   formdesigns:    'Form Designs',
   emaildesigns:   'Email Designs',
   exports:        'Exports',
+  snapshots:      'Snapshots',
   supabasehealth: 'System Health',
 };

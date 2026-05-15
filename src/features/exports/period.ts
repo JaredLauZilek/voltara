@@ -1,33 +1,36 @@
-export type Quarter = 1 | 2 | 3 | 4;
+/** 1 = January, 12 = December. */
+export type Month = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface Period {
   year: number;
-  quarter: Quarter;
-  /** Inclusive ISO date (YYYY-MM-DD) for the first day of the quarter. */
+  month: Month;
+  /** Inclusive ISO date (YYYY-MM-DD) for the first day of the month. */
   startISO: string;
-  /** Inclusive ISO date for the last day of the quarter. */
+  /** Inclusive ISO date for the last day of the month. */
   endISO: string;
-  /** "voltara-Q1-2026" — used as the zip filename prefix. */
+  /** "voltara-2026-04" — used as the zip filename prefix. */
   slug: string;
+  /** "April 2026" — used in headings, README, etc. */
   label: string;
 }
 
-export function quarterOf(date: Date): Quarter {
-  return (Math.floor(date.getMonth() / 3) + 1) as Quarter;
-}
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
 
-export function makePeriod(year: number, quarter: Quarter): Period {
-  const startMonth = (quarter - 1) * 3;
-  const start = new Date(Date.UTC(year, startMonth, 1));
-  const end = new Date(Date.UTC(year, startMonth + 3, 0));
+export function makePeriod(year: number, month: Month): Period {
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const mm = String(month).padStart(2, '0');
   return {
     year,
-    quarter,
+    month,
     startISO: fmt(start),
     endISO: fmt(end),
-    slug: `voltara-Q${quarter}-${year}`,
-    label: `Q${quarter} ${year}`,
+    slug: `voltara-${year}-${mm}`,
+    label: `${MONTH_NAMES[month - 1]} ${year}`,
   };
 }
 
@@ -38,7 +41,7 @@ export function inPeriod(iso: string | null | undefined, p: Period): boolean {
   return d >= p.startISO && d <= p.endISO;
 }
 
-export function currentQuarter(): Period {
+export function currentMonth(): Period {
   const now = new Date();
-  return makePeriod(now.getUTCFullYear(), quarterOf(now));
+  return makePeriod(now.getUTCFullYear(), (now.getUTCMonth() + 1) as Month);
 }

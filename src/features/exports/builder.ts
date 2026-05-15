@@ -80,8 +80,17 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
 
   // Outstanding receivables/payables are NOT period-filtered — the accountant
   // wants the current open ledger regardless of when the doc was issued.
-  const openInvoices = inputs.invoices.filter((i) => i.status === 'Sent' || i.status === 'Overdue');
-  const openBills    = inputs.bills.filter((b) => b.status === 'Unpaid' || b.status === 'Overdue');
+  // Partially Paid invoices count too; their `outstanding` is total − paid.
+  const openInvoices = inputs.invoices.filter((i) =>
+    i.status === 'Sent' || i.status === 'Overdue' || i.status === 'Partially Paid');
+  const openBills    = inputs.bills.filter((b) =>
+    b.status === 'Unpaid' || b.status === 'Overdue' || b.status === 'Disputed');
+
+  // Sum of payments per invoice — used by AR (and cash-in-this-period below)
+  const paidByInvoice = new Map<string, number>();
+  for (const p of inputs.invoicePayments) {
+    paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount));
+  }
 
   const zip = new JSZip();
 
@@ -112,12 +121,20 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   const gross = revenue - cogs;
   const net = gross - opex;
 
+  // Cash basis: actual money collected via invoice_payments, dated within the
+  // period — useful when invoices were issued before the period but partially
+  // paid during it (deposits, progress, final).
+  const cashCollected = inputs.invoicePayments
+    .filter((p) => inPeriod(p.paid_on, period))
+    .reduce((s, p) => s + Number(p.amount), 0);
+
   zip.file(
     '01-financial-summary/pnl-summary.csv',
     toCSV(
       ['metric', 'amount_rm'],
       [
-        ['Revenue (paid invoices)', revenue.toFixed(2)],
+        ['Revenue (paid invoices, accrual)', revenue.toFixed(2)],
+        ['Cash collected (invoice payments dated in period)', cashCollected.toFixed(2)],
         ['COGS (paid bills, RM-equivalent)', cogs.toFixed(2)],
         ['Gross Profit', gross.toFixed(2)],
         ['Operating Expenses (paid)', opex.toFixed(2)],
@@ -146,16 +163,20 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   zip.file(
     '01-financial-summary/ar-ap-summary.csv',
     toCSV(
-      ['ledger', 'doc_id', 'party', 'amount_rm', 'currency', 'issued', 'due', 'status', 'age_days'],
+      ['ledger', 'doc_id', 'party', 'total_rm', 'paid_rm', 'outstanding_rm', 'currency', 'issued', 'due', 'status', 'age_days'],
       [
         ...openInvoices.map((i) => {
           const total = calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total;
+          const paid = paidByInvoice.get(i.id) ?? 0;
+          const outstanding = Math.max(0, total - paid);
           const age = ageDays(i.due_date);
           return [
             'AR',
             i.id,
             customerById.get(i.customer_id)?.name ?? i.customer_id,
             total.toFixed(2),
+            paid.toFixed(2),
+            outstanding.toFixed(2),
             'RM',
             i.issue_date,
             i.due_date,
@@ -164,12 +185,16 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
           ];
         }),
         ...openBills.map((b) => {
+          const total = b.amount + b.tax;
           const age = ageDays(b.due_date);
           return [
             'AP',
             b.id,
             supplierById.get(b.supplier_id ?? '')?.name ?? b.vendor,
-            (b.amount + b.tax).toFixed(2),
+            total.toFixed(2),
+            // Bills are single-payment in the current model.
+            b.status === 'Paid' ? total.toFixed(2) : '0.00',
+            b.status === 'Paid' ? '0.00' : total.toFixed(2),
             b.currency ?? 'RM',
             b.bill_date,
             b.due_date ?? '',
@@ -187,9 +212,12 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
     '02-revenue/invoices.csv',
     toCSV(
       ['id', 'customer_id', 'customer_name', 'quote_id', 'issue_date', 'due_date', 'status',
-       'subtotal_rm', 'discount_mode', 'discount_value', 'discount_amt_rm', 'tax_pct', 'tax_amt_rm', 'total_rm', 'notes'],
+       'subtotal_rm', 'discount_mode', 'discount_value', 'discount_amt_rm', 'tax_pct', 'tax_amt_rm',
+       'total_rm', 'paid_rm', 'outstanding_rm', 'deposit_percent', 'notes'],
       periodInvoices.map((i) => {
         const t = calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode);
+        const paid = paidByInvoice.get(i.id) ?? 0;
+        const outstanding = Math.max(0, t.total - paid);
         return [
           i.id,
           i.customer_id,
@@ -205,9 +233,27 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
           i.tax,
           t.taxAmt.toFixed(2),
           t.total.toFixed(2),
+          paid.toFixed(2),
+          outstanding.toFixed(2),
+          i.deposit_percent ?? '',
           i.notes ?? '',
         ];
       })
+    )
+  );
+
+  // Invoice payments — every recorded payment, filtered to those dated in the
+  // period (so accountants reconciling a single month see only that month's
+  // cash movements, even if the parent invoice was issued earlier).
+  const periodPayments = inputs.invoicePayments.filter((p) => inPeriod(p.paid_on, period));
+  zip.file(
+    '02-revenue/invoice-payments.csv',
+    toCSV(
+      ['payment_id', 'invoice_id', 'paid_on', 'amount_rm', 'method', 'reference', 'label', 'notes'],
+      periodPayments.map((p) => [
+        p.id, p.invoice_id, p.paid_on, Number(p.amount).toFixed(2),
+        p.method ?? '', p.reference ?? '', p.label ?? '', p.notes ?? '',
+      ])
     )
   );
 
@@ -381,13 +427,13 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
 
   // ── README ──────────────────────────────────────────────────────────────
   const readme = [
-    `Voltara — Quarterly Export (${period.label})`,
+    `Voltara — Monthly Export (${period.label})`,
     `Period: ${period.startISO} → ${period.endISO}`,
     `Generated: ${new Date().toISOString()}`,
     '',
     'Folder layout:',
-    '  01-financial-summary/   P&L, period totals, AR/AP open ledger',
-    '  02-revenue/             Invoices CSV + rendered PDFs',
+    '  01-financial-summary/   P&L (accrual + cash), period totals, AR/AP open ledger',
+    '  02-revenue/             Invoices CSV + payments CSV + rendered PDFs',
     '  03-cogs/                Bills CSV + supplier-side documents + PO cross-ref',
     '  04-expenses/            Operating expenses CSV + attachments',
     '  05-master-data/         Customers / Suppliers / Products lookup tables',
@@ -396,9 +442,14 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
     'All CSVs are UTF-8 with a BOM and use comma separators (RFC 4180).',
     'Money columns are in the entity\'s recorded currency unless noted "_rm".',
     '',
-    'Note: Multi-currency entities (POs, Bills) include a "currency" column.',
-    'The P&L summary aggregates across all currencies as if RM — convert if',
-    'mixed currencies are present.',
+    'Notes:',
+    '  - Multi-currency entities (POs, Bills) include a "currency" column.',
+    '    The P&L aggregates across all currencies as if RM — convert if mixed.',
+    '  - Invoices CSV includes paid_rm / outstanding_rm so partial-payment',
+    '    invoices are reconcilable directly from the row.',
+    '  - invoice-payments.csv lists individual deposit / progress / final',
+    '    payments dated in this period. Sum should equal "Cash collected"',
+    '    in the P&L summary.',
   ].join('\r\n');
   zip.file('README.txt', readme);
   tick('Wrote README');

@@ -1,5 +1,4 @@
 import { createElement, useMemo } from 'react';
-import { pdf } from '@react-pdf/renderer';
 import { EmailSendModal } from '@/features/email-designs';
 import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { useCustomers } from '@/features/customers';
@@ -14,6 +13,8 @@ import type { PlaceholderContext } from '@/features/email-designs';
 interface Props {
   invoice: Invoice;
   onClose: () => void;
+  /** 'receipt' uses the receipt PDF variant and the 'receipt' email design. */
+  variant?: 'invoice' | 'receipt';
 }
 
 const fmtDate = (iso: string): string =>
@@ -21,12 +22,14 @@ const fmtDate = (iso: string): string =>
 
 const safeId = (id: string): string => id.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export function InvoiceEmailModal({ invoice, onClose }: Props) {
+export function InvoiceEmailModal({ invoice, onClose, variant = 'invoice' }: Props) {
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { data: payments = [] } = useInvoicePayments(invoice.id);
   const companyProfileQ = useCompanyProfile();
+  // Receipts reuse the invoice's form-design (heading swap is in the renderer).
   const formDesign = useDesign('invoice');
+  const isReceipt = variant === 'receipt';
 
   const customer = customers.find((c) => c.id === invoice.customer_id) ?? null;
 
@@ -60,7 +63,7 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
       },
       doc: {
         id:        invoice.id,
-        kind:      'Invoice',
+        kind:      isReceipt ? 'Receipt' : 'Invoice',
         date:      fmtDate(invoice.issue_date),
         due_date:  fmtDate(invoice.due_date),
         valid_to:  '—',
@@ -76,36 +79,32 @@ export function InvoiceEmailModal({ invoice, onClose }: Props) {
         website: company?.website ?? '',
       },
     };
-  }, [invoice, customer, payments, companyProfileQ.data]);
+  }, [invoice, customer, payments, companyProfileQ.data, isReceipt]);
 
-  const buildPdfBlob = async (): Promise<Blob> => {
-    if (!companyProfileQ.data || !formDesign.design) {
-      throw new Error('Form design is still loading.');
-    }
-    return await pdf(
-      createElement(InvoicePdf, {
-        invoice,
-        customer,
-        products,
-        profile: companyProfileQ.data,
-        design: formDesign.design,
-        payments,
-      }),
-    ).toBlob();
-  };
+  if (!companyProfileQ.data || !formDesign.design) return null;
+
+  const pdfDocument = createElement(InvoicePdf, {
+    invoice,
+    customer,
+    products,
+    profile: companyProfileQ.data,
+    design: formDesign.design,
+    payments,
+    variant,
+  });
 
   return (
     <EmailSendModal
-      docType="invoice"
+      docType={isReceipt ? 'receipt' : 'invoice'}
       recipient={{
         name:  customer?.name ?? invoice.customer_id,
         email: customer?.email ?? null,
       }}
       subtitle={invoice.id}
       context={ctx}
-      buildPdfBlob={buildPdfBlob}
-      pdfFileName={pdfFilename(invoice.id, customer?.name)}
-      storagePathPrefix={`invoices/${safeId(invoice.id)}/email-`}
+      pdfDocument={pdfDocument}
+      pdfFileName={pdfFilename(`${isReceipt ? 'RECEIPT-' : ''}${invoice.id}`, customer?.name)}
+      storagePathPrefix={`invoices/${safeId(invoice.id)}/${isReceipt ? 'receipt-' : 'email-'}`}
       onClose={onClose}
     />
   );

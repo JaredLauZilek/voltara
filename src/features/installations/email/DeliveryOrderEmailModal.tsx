@@ -1,5 +1,4 @@
 import { createElement, useMemo } from 'react';
-import { pdf } from '@react-pdf/renderer';
 import { EmailSendModal } from '@/features/email-designs';
 import { useCompanyProfile, useDesign } from '@/features/form-designs';
 import { useCustomers } from '@/features/customers';
@@ -62,21 +61,16 @@ export function DeliveryOrderEmailModal({ installation, onClose }: Props) {
     };
   }, [installation, customer, quote, companyProfileQ.data]);
 
-  const buildPdfBlob = async (): Promise<Blob> => {
-    if (!companyProfileQ.data || !formDesign.design) {
-      throw new Error('Form design is still loading.');
-    }
-    return await pdf(
-      createElement(DeliveryOrderPdf, {
-        installation,
-        quote,
-        customer,
-        products,
-        profile: companyProfileQ.data,
-        design: formDesign.design,
-      }),
-    ).toBlob();
-  };
+  if (!companyProfileQ.data || !formDesign.design) return null;
+
+  const pdfDocument = createElement(DeliveryOrderPdf, {
+    installation,
+    quote,
+    customer,
+    products,
+    profile: companyProfileQ.data,
+    design: formDesign.design,
+  });
 
   return (
     <EmailSendModal
@@ -87,7 +81,7 @@ export function DeliveryOrderEmailModal({ installation, onClose }: Props) {
       }}
       subtitle={installation.id}
       context={ctx}
-      buildPdfBlob={buildPdfBlob}
+      pdfDocument={pdfDocument}
       pdfFileName={pdfFilename(installation.id, customer?.name)}
       storagePathPrefix={`installations/${safeId(installation.id)}/email-`}
       onClose={onClose}

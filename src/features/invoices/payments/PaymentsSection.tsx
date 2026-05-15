@@ -5,6 +5,8 @@ import { calcInvoiceTotals } from '../totals';
 import type { Invoice } from '../types';
 import { useInvoicePayments, useCreatePayment, useDeletePayment } from './hooks';
 import { PAYMENT_METHODS, type PaymentMethod } from './types';
+import { InvoicePrintModal } from '../pdf/InvoicePrintModal';
+import { InvoiceEmailModal } from '../email';
 
 interface Props {
   invoice: Invoice;
@@ -53,7 +55,10 @@ export function PaymentsSection({ invoice, depositPercent, onDepositPercentChang
   });
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [shareReceipt, setShareReceipt] = useState(false);
 
+  const isFullyPaid = total > 0 && payments.length > 0 && outstanding < 0.005;
   const wouldOverpay = form.amount > 0 && paid + form.amount > total + 0.005;
   const canSubmit = form.amount > 0 && !!form.paid_on && !wouldOverpay && !createMut.isPending;
 
@@ -92,7 +97,47 @@ export function PaymentsSection({ invoice, depositPercent, onDepositPercentChang
   return (
     <div style={{ background: C.seasalt, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Payments</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Payments</span>
+          {isFullyPaid && (
+            <>
+              <button
+                onClick={() => setShowReceipt(true)}
+                title="Print an Official Receipt — same layout as the invoice"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${C.green}`,
+                  background: C.white,
+                  color: C.green,
+                  fontFamily: 'Figtree',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ↓ Print Receipt
+              </button>
+              <button
+                onClick={() => setShareReceipt(true)}
+                title="Email the receipt to the customer"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${C.border}`,
+                  background: C.white,
+                  color: C.green,
+                  fontFamily: 'Figtree',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ↗ Share
+              </button>
+            </>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 14, fontSize: 12 }}>
           <span>
             <span style={{ color: C.slate, marginRight: 6 }}>Total</span>
@@ -108,6 +153,12 @@ export function PaymentsSection({ invoice, depositPercent, onDepositPercentChang
           </span>
         </div>
       </div>
+      {showReceipt && (
+        <InvoicePrintModal invoice={invoice} variant="receipt" onClose={() => setShowReceipt(false)} />
+      )}
+      {shareReceipt && (
+        <InvoiceEmailModal invoice={invoice} variant="receipt" onClose={() => setShareReceipt(false)} />
+      )}
 
       {/* Deposit request (only when no payments yet) */}
       {showDepositRow && (

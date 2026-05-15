@@ -42,7 +42,7 @@ export function EmailDesignsScreen() {
   const [docType, setDocType] = useState<DocType>('quote');
   const [profileDraft, setProfileDraft] = useState<CompanyEmailProfile | null>(null);
   const [designDrafts, setDesignDrafts] = useState<Record<DocType, EmailDesign | undefined>>({
-    invoice: undefined, quote: undefined, delivery_order: undefined, purchase_order: undefined,
+    invoice: undefined, quote: undefined, delivery_order: undefined, purchase_order: undefined, receipt: undefined,
   });
 
   useEffect(() => {

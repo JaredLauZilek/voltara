@@ -14,6 +14,10 @@ export const DOC_TYPES: { id: DocType; label: string }[] = [
   { id: 'quote',           label: 'Quotation' },
   { id: 'delivery_order',  label: 'Delivery Order' },
   { id: 'purchase_order',  label: 'Purchase Order' },
+  // Receipts reuse the invoice form-design (same layout, different heading
+  // and footer rules — see InvoicePdf variant). The form-designs UI filters
+  // this out of its tab list; the email-designs UI shows it as its own tab.
+  { id: 'receipt',         label: 'Receipt' },
 ];
 
 export const FONT_FAMILIES: CompanyProfile['font_family'][] = ['Figtree', 'Helvetica', 'Times', 'Courier'];

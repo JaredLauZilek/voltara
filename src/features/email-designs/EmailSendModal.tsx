@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { pdf, PDFViewer } from '@react-pdf/renderer';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
 import { useCompanyProfile } from '@/features/form-designs';
@@ -12,7 +13,8 @@ interface Props {
   recipient: { name: string; email: string | null };
   subtitle?: string;
   context: PlaceholderContext;
-  buildPdfBlob: () => Promise<Blob>;
+  /** The @react-pdf document element to render and attach. */
+  pdfDocument: ReactElement;
   pdfFileName: string;
   storagePathPrefix: string;
   onClose: () => void;
@@ -42,11 +44,12 @@ export function EmailSendModal({
   recipient,
   subtitle,
   context,
-  buildPdfBlob,
+  pdfDocument,
   pdfFileName,
   storagePathPrefix,
   onClose,
 }: Props) {
+  const buildPdfBlob = async (): Promise<Blob> => pdf(pdfDocument).toBlob();
   const companyProfileQ = useCompanyProfile();
   const { profile, design, isLoading } = useEmailDesign(docType);
 
@@ -77,6 +80,7 @@ export function EmailSendModal({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, isSending]);
+
 
   const ready = !isLoading && !!profile && !!design && !!rendered && to.includes('@');
 
@@ -185,7 +189,28 @@ export function EmailSendModal({
             }}
           />
         )}
-        {design?.attach_pdf && (
+        {showHtmlPreview && design?.attach_pdf && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span style={{ ...labelStyle, marginBottom: 0 }}>Attachment</span>
+              <span style={{ fontSize: 11, color: C.slate }}>
+                — the {docType.replace('_', ' ')} PDF the customer will receive
+              </span>
+            </div>
+            <div style={{
+              width: '100%',
+              height: 540,
+              borderRadius: 12,
+              background: '#525659',
+              overflow: 'hidden',
+            }}>
+              <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none' }}>
+                {pdfDocument}
+              </PDFViewer>
+            </div>
+          </>
+        )}
+        {!showHtmlPreview && design?.attach_pdf && (
           <div style={{ fontSize: 11, color: C.slate }}>
             The {docType.replace('_', ' ')} PDF will be attached automatically.
           </div>

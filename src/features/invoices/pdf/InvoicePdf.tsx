@@ -43,6 +43,8 @@ interface Props {
   profile: CompanyProfile;
   design: FormDesign;
   payments?: { paid_on: string; amount: number; method: string | null; label: string | null }[];
+  /** 'receipt' swaps the heading & document title; layout is otherwise identical. */
+  variant?: 'invoice' | 'receipt';
 }
 
 function fmtDate(iso: string) {
@@ -287,8 +289,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export function InvoicePdf({ invoice, customer, products, profile, design, payments = [] }: Props) {
+export function InvoicePdf({ invoice, customer, products, profile, design, payments = [], variant = 'invoice' }: Props) {
   const accent = design.accent_color || profile.brand_color;
+  const isReceipt = variant === 'receipt';
+  const heading = isReceipt ? 'OFFICIAL RECEIPT' : 'INVOICE';
 
   const items = invoice.line_items.map((li) => {
     const p = products.find((x) => x.id === li.product_id);
@@ -311,7 +315,9 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
   // Compute the page bottom padding from the footer sections actually in use,
   // so line items pack tightly instead of being pushed to the next page by a
   // generously-padded reservation.
-  const hasPay = !!(design.payment_instructions || profile.bank_details);
+  // Receipts hide payment instructions entirely — the document is acknowledging
+  // money already received, so the "how to pay" block is misleading.
+  const hasPay = !isReceipt && !!(design.payment_instructions || profile.bank_details);
   const hasTerms = !!design.terms_text;
   const hasSig = !!design.show_signature_block;
   const pageBottomPadding =
@@ -344,7 +350,7 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
 
       <View style={[styles.titleBar, { borderBottomColor: accent }]}>
         <View style={styles.titleRow}>
-          <Text style={[styles.docTitle, { color: accent }]}>INVOICE</Text>
+          <Text style={[styles.docTitle, { color: accent }]}>{heading}</Text>
           <Text style={styles.refBlock}>
             <Text style={styles.refId}>{invoice.id}</Text>{'\n'}
             Issued: {fmtDate(invoice.issue_date)}{'\n'}
@@ -377,8 +383,9 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
 
   const PageFooter = (
     <View fixed style={styles.footerWrap}>
-      {/* Payment instructions — first block in the footer, repeats per page */}
-      {design.payment_instructions || profile.bank_details ? (
+      {/* Payment instructions — first block in the footer, repeats per page.
+          Hidden on receipts (money is already received). */}
+      {!isReceipt && (design.payment_instructions || profile.bank_details) ? (
         <View style={[styles.payBlock, { borderColor: accent }]}>
           <Text style={[styles.payLabel, { color: accent }]}>PAYMENT INSTRUCTIONS</Text>
           {design.payment_instructions ? <Text style={styles.payBody}>{design.payment_instructions}</Text> : null}
@@ -387,7 +394,7 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
       ) : null}
 
       {design.terms_text ? (
-        <View style={{ marginTop: (design.payment_instructions || profile.bank_details) ? 10 : 0 }}>
+        <View style={{ marginTop: (!isReceipt && (design.payment_instructions || profile.bank_details)) ? 10 : 0 }}>
           <Text style={styles.footerTermsLabel}>TERMS & CONDITIONS</Text>
           <Text style={styles.footerTermsBody}>{design.terms_text}</Text>
         </View>
@@ -418,7 +425,7 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
 
   return (
     <Document
-      title={`INVOICE ${invoice.id}`}
+      title={`${heading} ${invoice.id}`}
       author={profile.company_name}
       creator="Voltara Operations Dashboard"
     >
@@ -529,10 +536,12 @@ export function InvoicePdf({ invoice, customer, products, profile, design, payme
                   <Text style={{ fontSize: 9, color: C.slate, fontWeight: 700 }}>Paid</Text>
                   <Text style={{ fontSize: 9, color: C.ink, fontWeight: 700 }}>{fmtRM(paid)}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 9, color: C.slate, fontWeight: 700 }}>Outstanding</Text>
-                  <Text style={{ fontSize: 9, color: outstanding > 0 ? '#C0321A' : C.ink, fontWeight: 700 }}>{fmtRM(outstanding)}</Text>
-                </View>
+                {!isReceipt && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 9, color: C.slate, fontWeight: 700 }}>Outstanding</Text>
+                    <Text style={{ fontSize: 9, color: outstanding > 0 ? '#C0321A' : C.ink, fontWeight: 700 }}>{fmtRM(outstanding)}</Text>
+                  </View>
+                )}
               </View>
             );
           })() : null}

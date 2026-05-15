@@ -17,6 +17,7 @@ function buildSampleContext(docType: DocType, companyName: string): PlaceholderC
       case 'quote':          return { id: 'Q-2026-001',     kind: 'Quotation',      date: '11 May 2026', due_date: '—',            valid_to: '10 Jun 2026', total: 'RM 12,400.00' };
       case 'delivery_order': return { id: 'DO-2026-0421',   kind: 'Delivery Order', date: '14 May 2026', due_date: '—',            valid_to: '—',           total: 'RM 12,400.00' };
       case 'purchase_order': return { id: 'PO-2026-0188',   kind: 'Purchase Order', date: '11 May 2026', due_date: '—',            valid_to: '—',           total: 'RM 8,750.00'  };
+      case 'receipt':        return { id: 'INV-2026-3098',  kind: 'Receipt',        date: '14 May 2026', due_date: '—',            valid_to: '—',           total: 'RM 12,400.00' };
     }
   })();
   return {

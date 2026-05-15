@@ -5,6 +5,7 @@ import { NavItem } from '@/shared/components/NavItem';
 import { NAV_SECTIONS, SCREEN_TITLES, type ScreenId } from './nav';
 import { ROUTES } from './routes';
 import { useUnacknowledgedAlertsCount } from '@/features/seo';
+import { useCompanyProfile } from '@/features/form-designs';
 
 const COLLAPSED_KEY = 'voltara.nav.collapsed';
 
@@ -12,6 +13,8 @@ export function App() {
   const [screen, setScreen] = useState<ScreenId>('overview');
   const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const seoAlertsCount = useUnacknowledgedAlertsCount();
+  const { data: companyProfile } = useCompanyProfile();
+  const customLogo = companyProfile?.logo_data_url ?? null;
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -46,8 +49,16 @@ export function App() {
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '20px 8px 16px', borderBottom: `1px solid ${C.divider}`, marginBottom: 8 }}>
-          <VoltaraLogo height={34} />
+        <div style={{ padding: '20px 8px 16px', borderBottom: `1px solid ${C.divider}`, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 54 }}>
+          {customLogo ? (
+            <img
+              src={customLogo}
+              alt={companyProfile?.company_name ?? 'Company logo'}
+              style={{ maxHeight: 40, maxWidth: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            <VoltaraLogo height={34} />
+          )}
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 12 }}>
