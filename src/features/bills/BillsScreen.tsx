@@ -60,9 +60,9 @@ export function BillsScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <KPICard
-          label="Unpaid Bills"
-          value={formatRMShort(unpaidTotal)}
-          sub={usesMultipleCurrencies ? 'Total outstanding · converted to RM' : 'Total outstanding'}
+          label="COGS YTD"
+          value={formatRMShort(ytdCogs)}
+          sub={usesMultipleCurrencies ? 'Paid bills this year · RM eq.' : 'Paid bills this year'}
           accent
         />
         <KPICard
@@ -72,9 +72,9 @@ export function BillsScreen() {
         />
         <KPICard label="Overdue" value={overdueCount} sub="Past due date" />
         <KPICard
-          label="COGS YTD"
-          value={formatRMShort(ytdCogs)}
-          sub={usesMultipleCurrencies ? 'Paid bills this year · RM eq.' : 'Paid bills this year'}
+          label="Unpaid Bills"
+          value={formatRMShort(unpaidTotal)}
+          sub={usesMultipleCurrencies ? 'Total outstanding · converted to RM' : 'Total outstanding'}
         />
       </div>
 

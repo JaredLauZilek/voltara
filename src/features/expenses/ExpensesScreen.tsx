@@ -3,6 +3,7 @@ import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { formatRM, formatRMShort, todayISO, monthKey } from '@/shared/lib/format';
 import { toMYRSnapshot } from '@/shared/lib/fxRate';
 import {
@@ -11,6 +12,7 @@ import {
   useUpdateExpense,
   useDeleteExpense,
   useExpenseCategories,
+  useExpenseEntities,
 } from './hooks';
 import { ExpenseModal } from './ExpenseModal';
 import { EXPENSE_STATUSES } from './types';
@@ -30,12 +32,14 @@ const MONTHLY_FACTOR: Record<Expense['recurrence'], number> = {
 export function ExpensesScreen() {
   const { data: expenses = [] } = useExpenses();
   const { data: categories = [] } = useExpenseCategories();
+  const { data: entities = [] } = useExpenseEntities();
   const createMut = useCreateExpense();
   const updateMut = useUpdateExpense();
   const deleteMut = useDeleteExpense();
 
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('All');
   const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [filterEntity, setFilterEntity] = useState<string>('All');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [search, setSearch] = useState('');
@@ -43,9 +47,10 @@ export function ExpensesScreen() {
   const [modal, setModal] = useState<Expense | 'new' | null>(null);
 
   const hasSecondaryFilters =
-    filterCategory !== 'All' || !!filterDateFrom || !!filterDateTo;
+    filterCategory !== 'All' || filterEntity !== 'All' || !!filterDateFrom || !!filterDateTo;
   const clearSecondary = () => {
     setFilterCategory('All');
+    setFilterEntity('All');
     setFilterDateFrom('');
     setFilterDateTo('');
   };
@@ -63,6 +68,7 @@ export function ExpensesScreen() {
 
   const matchesBaseFilters = (e: Expense) => {
     if (filterCategory !== 'All' && e.category !== filterCategory) return false;
+    if (filterEntity !== 'All' && e.entity !== filterEntity) return false;
     if (filterDateFrom && e.expense_date < filterDateFrom) return false;
     if (filterDateTo && e.expense_date > filterDateTo) return false;
     return matchesText(e);
@@ -154,10 +160,10 @@ export function ExpensesScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Spent This Month" value={formatRMShort(spentThisMonth)} sub={hasNonRM ? 'Paid · RM eq.' : 'Paid expenses'} accent />
+        <KPICard label="YTD Spent" value={formatRMShort(ytdSpent)} sub={`${yearKey} so far${hasNonRM ? ' · RM eq.' : ''}`} accent />
         <KPICard label="Pending" value={pendingCount} sub="Awaiting payment" />
         <KPICard label="Recurring / Month" value={formatRMShort(recurringMonthly)} sub={hasNonRM ? 'Normalized burn · RM eq.' : 'Normalized burn'} />
-        <KPICard label="YTD Spent" value={formatRMShort(ytdSpent)} sub={`${yearKey} so far${hasNonRM ? ' · RM eq.' : ''}`} />
+        <KPICard label="Spent This Month" value={formatRMShort(spentThisMonth)} sub={hasNonRM ? 'Paid · RM eq.' : 'Paid expenses'} />
       </div>
 
       <Toolbar
@@ -200,16 +206,34 @@ export function ExpensesScreen() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Category</span>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            style={selectStyle(filterCategory !== 'All')}
-          >
-            <option value="All">All</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <div style={{ width: 180 }}>
+            <SearchableSelect
+              options={categories.map((c) => ({ value: c, label: c }))}
+              value={filterCategory === 'All' ? null : filterCategory}
+              onChange={(v) => setFilterCategory(v ?? 'All')}
+              nullable
+              nullLabel="All"
+              placeholder="All"
+              style={filterPickerStyle(filterCategory !== 'All')}
+            />
+          </div>
+        </div>
+
+        <div style={{ width: 1, height: 24, background: C.border }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Entity</span>
+          <div style={{ width: 220 }}>
+            <SearchableSelect
+              options={entities.map((n) => ({ value: n, label: n }))}
+              value={filterEntity === 'All' ? null : filterEntity}
+              onChange={(v) => setFilterEntity(v ?? 'All')}
+              nullable
+              nullLabel="All"
+              placeholder="All"
+              style={filterPickerStyle(filterEntity !== 'All')}
+            />
+          </div>
         </div>
 
         <div style={{ width: 1, height: 24, background: C.border }} />
@@ -487,18 +511,16 @@ function formatPeriodShort(period: string): string {
   return new Date(y, m - 1, 1).toLocaleString('en-GB', { month: 'short', year: 'numeric' });
 }
 
-function selectStyle(active: boolean): React.CSSProperties {
+// Overrides applied to the shared SearchableSelect's trigger so it picks up
+// the active-filter "chip" look (green border + honeydew bg) when a value is
+// selected — same affordance the date inputs use just below.
+function filterPickerStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '7px 10px',
-    borderRadius: 10,
+    padding: '7px 28px 7px 12px',
     border: `1px solid ${active ? C.green : C.border}`,
-    fontFamily: 'Figtree',
-    fontSize: 13,
     color: active ? C.green : C.slate,
     fontWeight: active ? 700 : 500,
     background: active ? C.honeydew : C.white,
-    outline: 'none',
-    cursor: 'pointer',
   };
 }
 

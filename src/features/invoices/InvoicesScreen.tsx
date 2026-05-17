@@ -75,6 +75,13 @@ export function InvoicesScreen() {
 
   const overdueCount = invoices.filter((i) => i.status === 'Overdue').length;
 
+  // Lifetime billed amount — sum of invoice totals across all time, excluding
+  // Draft (not yet issued) and Cancelled (voided). Matches the same scope
+  // logic the Outstanding KPI uses.
+  const totalInvoiceAmount = invoices
+    .filter((i) => i.status !== 'Draft' && i.status !== 'Cancelled')
+    .reduce((s, i) => s + calcInvoiceTotals(i.line_items, i.discount, i.tax, i.discount_mode).total, 0);
+
   const handleSave = (row: InvoiceInsert) => {
     if (modal === 'new') createMut.mutate(row, { onSuccess: () => setModal(null) });
     else if (modal && typeof modal !== 'string')
@@ -86,7 +93,7 @@ export function InvoicesScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Total Invoices" value={invoices.length} sub="All time" accent />
+        <KPICard label="Total Invoice Amount" value={formatRMShort(totalInvoiceAmount)} sub="All time · issued + paid" accent />
         <KPICard label="Outstanding" value={formatRMShort(outstanding)} sub="Unpaid + partially paid" />
         <KPICard label="Collected this month" value={formatRM(Math.round(collectedThisMonth))} sub="Sum of payments received" />
         <KPICard label="Overdue" value={overdueCount} sub="Requires follow-up" />
