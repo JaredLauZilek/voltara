@@ -1,11 +1,12 @@
 // Expense-side wrapper around the `parse-invoice` Supabase Edge Function.
 // Same Anthropic-vision pipeline as bills, but the parsed `vendor_name` is
 // matched against the user's managed expense_entities list instead of
-// suppliers — and currency/tax/due_date are dropped since the expenses
-// table has no use for them.
+// suppliers — and tax/due_date are dropped since the expenses table has
+// no use for them. Currency IS kept so USD/SGD/CNY subscriptions can be
+// prefilled and converted to MYR in KPIs.
 
 import { supabase } from '@/shared/lib/supabase';
-import type { ExpenseCategory } from '../types';
+import { EXPENSE_CURRENCIES, type ExpenseCategory, type ExpenseCurrency } from '../types';
 
 export interface ParsedExpenseInvoice {
   amount: number | null;
@@ -17,6 +18,8 @@ export interface ParsedExpenseInvoice {
   vendor_guess: string | null;
   /** Model-picked category, validated against EXPENSE_CATEGORIES server-side. */
   category: ExpenseCategory | null;
+  /** Detected billing currency (RM/CNY/SGD/USD). null = couldn't tell. */
+  currency: ExpenseCurrency | null;
 }
 
 interface ApiResponse {
@@ -59,6 +62,11 @@ export async function parseExpenseInvoice(
       ? (fields.category as ExpenseCategory)
       : null;
 
+  const currency =
+    fields.currency && (EXPENSE_CURRENCIES as readonly string[]).includes(fields.currency)
+      ? (fields.currency as ExpenseCurrency)
+      : null;
+
   return {
     amount: fields.amount,
     expense_date: fields.bill_date,
@@ -66,6 +74,7 @@ export async function parseExpenseInvoice(
     entity,
     vendor_guess,
     category,
+    currency,
   };
 }
 

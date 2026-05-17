@@ -4,6 +4,7 @@ import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
 import { Pagination, usePagination } from '@/shared/components/Pagination';
 import { formatRM, formatRMShort, todayISO, monthKey } from '@/shared/lib/format';
+import { toMYRSnapshot } from '@/shared/lib/fxRate';
 import {
   useExpenses,
   useCreateExpense,
@@ -103,22 +104,36 @@ export function ExpensesScreen() {
 
   for (const e of expenses) {
     if (e.recurrence === 'None') {
+      // Use the snapshotted FX rate from `expense_date`; falls back to the
+      // static MYR_RATES table for legacy rows without a snapshot.
+      const amtMYR = toMYRSnapshot(Number(e.amount), e.myr_rate, e.currency);
       if (e.status === 'Pending') pendingCount += 1;
-      if (e.status === 'Paid' && e.paid_on?.slice(0, 7) === thisMonth) spentThisMonth += Number(e.amount);
-      if (e.status === 'Paid' && e.paid_on?.slice(0, 4) === yearKey) ytdSpent += Number(e.amount);
+      if (e.status === 'Paid' && e.paid_on?.slice(0, 7) === thisMonth) spentThisMonth += amtMYR;
+      if (e.status === 'Paid' && e.paid_on?.slice(0, 4) === yearKey) ytdSpent += amtMYR;
     } else {
       for (const p of e.periods) {
+        // Per-period amount override (added for varying subscriptions
+        // like Google Workspace). Falls back to the parent's baseline.
+        // Currency is parent-level; per-period MYR rate is snapshotted at
+        // the period's `paid_on`, falling back to the parent rate then the
+        // static table.
+        const periodAmount = toMYRSnapshot(Number(p.amount ?? e.amount), p.myr_rate ?? e.myr_rate, e.currency);
         if (p.status === 'Pending') pendingCount += 1;
-        if (p.status === 'Paid' && p.period === thisMonth) spentThisMonth += Number(e.amount);
-        if (p.status === 'Paid' && p.period.slice(0, 4) === yearKey) ytdSpent += Number(e.amount);
+        if (p.status === 'Paid' && p.period === thisMonth) spentThisMonth += periodAmount;
+        if (p.status === 'Paid' && p.period.slice(0, 4) === yearKey) ytdSpent += periodAmount;
       }
     }
   }
 
-  // Recurring monthly burn — normalized
+  // Recurring monthly burn — normalized + MYR-converted. Uses the parent
+  // rate snapshot (the forward-looking projection sits at the parent level;
+  // per-period rates only matter for already-paid history).
   const recurringMonthly = expenses
     .filter((e) => e.recurrence !== 'None')
-    .reduce((s, e) => s + Number(e.amount) * MONTHLY_FACTOR[e.recurrence], 0);
+    .reduce((s, e) => s + toMYRSnapshot(Number(e.amount), e.myr_rate, e.currency) * MONTHLY_FACTOR[e.recurrence], 0);
+
+  // Surface to the user that mixed-currency totals are RM-equivalents.
+  const hasNonRM = expenses.some((e) => e.currency && e.currency !== 'RM');
 
   const handleSave = (row: ExpenseInsert) => {
     if (modal === 'new') {
@@ -139,10 +154,10 @@ export function ExpensesScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KPICard label="Spent This Month" value={formatRMShort(spentThisMonth)} sub="Paid expenses" accent />
+        <KPICard label="Spent This Month" value={formatRMShort(spentThisMonth)} sub={hasNonRM ? 'Paid · RM eq.' : 'Paid expenses'} accent />
         <KPICard label="Pending" value={pendingCount} sub="Awaiting payment" />
-        <KPICard label="Recurring / Month" value={formatRMShort(recurringMonthly)} sub="Normalized burn" />
-        <KPICard label="YTD Spent" value={formatRMShort(ytdSpent)} sub={`${yearKey} so far`} />
+        <KPICard label="Recurring / Month" value={formatRMShort(recurringMonthly)} sub={hasNonRM ? 'Normalized burn · RM eq.' : 'Normalized burn'} />
+        <KPICard label="YTD Spent" value={formatRMShort(ytdSpent)} sub={`${yearKey} so far${hasNonRM ? ' · RM eq.' : ''}`} />
       </div>
 
       <Toolbar
@@ -298,7 +313,9 @@ export function ExpensesScreen() {
                       </span>
                     </td>
                     <td style={{ padding: '13px 16px', fontWeight: 600 }}>{e.entity ?? <span style={{ fontStyle: 'italic', color: C.slate }}>—</span>}</td>
-                    <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{formatRM(Number(e.amount), 2)}</td>
+                    <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>
+                      {e.currency} {Number(e.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
                     <td style={{ padding: '13px 16px' }} onClick={(ev) => ev.stopPropagation()}>
                       <StatusSelect current={e.status} onChange={(s) => handleInlineStatusChange(e, s)} />
                     </td>
@@ -345,7 +362,27 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
   const periods = expense.periods ?? [];
   const paid = periods.filter((p) => p.status === 'Paid').length;
   const pending = periods.filter((p) => p.status === 'Pending').length;
-  const totalPaid = paid * Number(expense.amount);
+  // Native-currency sum of paid periods (shown in the parent's currency).
+  // For mixed-currency KPIs the top-of-screen totals convert to MYR; here we
+  // stay in-currency so the user can sanity-check against the actual invoice.
+  const totalPaidNative = periods
+    .filter((p) => p.status === 'Paid')
+    .reduce((s, p) => s + Number(p.amount ?? expense.amount), 0);
+  const isNonRM = expense.currency && expense.currency !== 'RM';
+  // Per-period rate snapshots — each Paid period contributes using its own
+  // historical rate, so the MYR equivalent matches what the accountant sees.
+  const totalPaidMYR = periods
+    .filter((p) => p.status === 'Paid')
+    .reduce(
+      (s, p) =>
+        s +
+        toMYRSnapshot(
+          Number(p.amount ?? expense.amount),
+          p.myr_rate ?? expense.myr_rate,
+          expense.currency,
+        ),
+      0,
+    );
   const lastPaid = [...periods]
     .filter((p) => p.status === 'Paid')
     .sort((a, b) => b.period.localeCompare(a.period))[0];
@@ -397,7 +434,7 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
       </div>
 
       <div style={{ fontSize: 18, fontWeight: 800, color: C.green, letterSpacing: '-0.02em' }}>
-        {formatRM(Number(expense.amount), 2)}
+        {expense.currency} {Number(expense.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         <span style={{ fontSize: 11, fontWeight: 600, color: C.slate, marginLeft: 4 }}>
           / {expense.recurrence.toLowerCase().replace('ly', '')}
         </span>
@@ -425,7 +462,14 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
           <span style={{ color: C.slate }}>Total paid</span>
-          <span style={{ fontWeight: 700, color: C.green }}>{formatRM(totalPaid, 2)}</span>
+          <span style={{ fontWeight: 700, color: C.green, textAlign: 'right' }}>
+            {expense.currency} {totalPaidNative.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {isNonRM && (
+              <span style={{ display: 'block', fontSize: 10, fontWeight: 600, color: C.slate, marginTop: 1 }}>
+                ≈ {formatRM(totalPaidMYR, 2)}
+              </span>
+            )}
+          </span>
         </div>
         {lastPaid && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.slate }}>

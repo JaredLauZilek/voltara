@@ -232,6 +232,11 @@ export interface Database {
           supplier_id: string | null;
           entity: string | null;
           amount: number;
+          currency: 'RM' | 'CNY' | 'SGD' | 'USD';
+          // MYR snapshot rate, captured at save time using the FX rate for
+          // `expense_date`. Null = legacy row or RM-denominated; readers fall
+          // back to the static MYR_RATES table.
+          myr_rate: number | null;
           payment_method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Cheque' | 'Other' | null;
           reference: string | null;
           recurrence: 'None' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
@@ -243,20 +248,34 @@ export interface Database {
             status: 'Pending' | 'Paid' | 'Cancelled';
             paid_on: string | null;
             attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+            // Optional per-period overrides. When null, the period inherits
+            // the parent expense's `amount` / `reference`. Lets a recurring
+            // subscription (Google Workspace, AWS) record each month's
+            // actual invoice without forking the row.
+            amount: number | null;
+            reference: string | null;
+            // Per-period MYR snapshot — captured for the period's `paid_on`
+            // date when Paid. Null falls back to parent `myr_rate` then to
+            // the static table.
+            myr_rate: number | null;
           }[];
           notes: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['expenses']['Row'], 'created_at' | 'attachments' | 'recurrence' | 'status' | 'periods'> & {
+        Insert: Omit<Database['public']['Tables']['expenses']['Row'], 'created_at' | 'attachments' | 'recurrence' | 'status' | 'periods' | 'myr_rate'> & {
           created_at?: string;
           attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
           recurrence?: 'None' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
           status?: 'Pending' | 'Paid' | 'Cancelled';
+          myr_rate?: number | null;
           periods?: {
             period: string;
             status: 'Pending' | 'Paid' | 'Cancelled';
             paid_on: string | null;
             attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+            amount?: number | null;
+            reference?: string | null;
+            myr_rate?: number | null;
           }[];
         };
         Update: Partial<Database['public']['Tables']['expenses']['Insert']>;
@@ -594,6 +613,31 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['ai_blogger_config']['Row']> & { id?: string };
         Update: Partial<Database['public']['Tables']['ai_blogger_config']['Insert']>;
       };
+      snapshot_meta: {
+        Row: {
+          id: number;
+          taken_at: string;
+          storage_path: string;
+          bytes: number | null;
+          table_counts: Record<string, number> | null;
+          trigger: 'cron' | 'manual';
+          status: 'pending' | 'completed' | 'failed';
+          error: string | null;
+          duration_ms: number | null;
+        };
+        Insert: {
+          id?: number;
+          taken_at?: string;
+          storage_path: string;
+          bytes?: number | null;
+          table_counts?: Record<string, number> | null;
+          trigger: 'cron' | 'manual';
+          status?: 'pending' | 'completed' | 'failed';
+          error?: string | null;
+          duration_ms?: number | null;
+        };
+        Update: Partial<Database['public']['Tables']['snapshot_meta']['Insert']>;
+      };
     };
     Views: {
       vw_customer_stats: {
@@ -626,31 +670,6 @@ export interface Database {
           prior_pos: number | null;
           delta: number | null;
         };
-      };
-      snapshot_meta: {
-        Row: {
-          id: number;
-          taken_at: string;
-          storage_path: string;
-          bytes: number | null;
-          table_counts: Record<string, number> | null;
-          trigger: 'cron' | 'manual';
-          status: 'pending' | 'completed' | 'failed';
-          error: string | null;
-          duration_ms: number | null;
-        };
-        Insert: {
-          id?: number;
-          taken_at?: string;
-          storage_path: string;
-          bytes?: number | null;
-          table_counts?: Record<string, number> | null;
-          trigger: 'cron' | 'manual';
-          status?: 'pending' | 'completed' | 'failed';
-          error?: string | null;
-          duration_ms?: number | null;
-        };
-        Update: Partial<Database['public']['Tables']['snapshot_meta']['Insert']>;
       };
     };
     Functions: Record<string, never>;

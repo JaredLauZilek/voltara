@@ -4,15 +4,19 @@ import { supabase } from '@/shared/lib/supabase';
 import { Modal } from '@/shared/components/Modal';
 import { todayISO } from '@/shared/lib/format';
 import { AttachmentsField } from '@/shared/components/AttachmentsField';
+import { fetchMyrRate } from '@/shared/lib/fxRate';
 import { ExpenseEntityPicker } from './ExpenseEntityPicker';
 import { ExpenseCategoryPicker } from './ExpenseCategoryPicker';
 import { InvoicePrefillField } from './components/InvoicePrefillField';
+import { PeriodInvoicePrefillField } from './components/PeriodInvoicePrefillField';
 import type { ParsedExpenseInvoice } from './lib/parseInvoice';
 import type { Attachment } from '@/shared/types';
 import {
+  EXPENSE_CURRENCIES,
   EXPENSE_STATUSES,
   RECURRENCE_FREQUENCIES,
 } from './types';
+import type { ExpenseCurrency } from './types';
 import type {
   Expense,
   ExpenseInsert,
@@ -70,6 +74,7 @@ function advancePeriod(period: string, freq: RecurrenceFrequency): string {
 export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
   const isNew = !expense;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<ExpenseInsert>(
     expense ?? {
       id: newExpenseId(),
@@ -80,6 +85,7 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
       supplier_id: null,
       entity: null,
       amount: 0,
+      currency: 'RM',
       payment_method: null,
       reference: null,
       recurrence: 'None',
@@ -103,6 +109,8 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
           status: 'Pending' as ExpenseStatus,
           paid_on: null,
           attachments: [],
+          amount: null,
+          reference: null,
         }];
         return { ...f, recurrence: nextRecurrence, periods };
       }
@@ -126,6 +134,8 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
         status: 'Pending',
         paid_on: null,
         attachments: [],
+        amount: null,
+        reference: null,
       };
       return { ...f, periods: [...periods, next] };
     });
@@ -171,12 +181,14 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
       if (fields.expense_date) {
         next.expense_date = fields.expense_date;
         // Paid invoices are typically paid the same day they're dated — keep
-        // paid_on in sync when prefilling, unless the user already set one.
-        if (next.status === 'Paid' && !f.paid_on) next.paid_on = fields.expense_date;
+        // paid_on in sync with the invoice date when prefilling. (The default
+        // paid_on is today, so guarding on `!f.paid_on` would never fire.)
+        if (next.status === 'Paid') next.paid_on = fields.expense_date;
       }
       if (fields.reference) next.reference = fields.reference;
       if (fields.entity) next.entity = fields.entity;
       if (fields.category) next.category = fields.category;
+      if (fields.currency) next.currency = fields.currency;
       return next;
     });
   };
@@ -191,6 +203,40 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
   };
 
   const periods = form.periods ?? [];
+
+  // Snapshot the MYR rate for `expense_date` (top-level) and `paid_on` (per
+  // Paid period) at save time. Frankfurter is hit once per distinct
+  // (currency, date) pair — usually 1–N small calls. We always re-fetch on
+  // save so changing the date or currency picks up the right historical rate.
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const next: ExpenseInsert = { ...form };
+
+      if (next.currency && next.currency !== 'RM') {
+        next.myr_rate = await fetchMyrRate(next.currency, next.expense_date);
+      } else {
+        next.myr_rate = null;
+      }
+
+      if (next.recurrence !== 'None' && next.periods) {
+        next.periods = await Promise.all(
+          next.periods.map(async (p) => {
+            if (next.currency && next.currency !== 'RM' && p.status === 'Paid' && p.paid_on) {
+              const rate = await fetchMyrRate(next.currency, p.paid_on);
+              return { ...p, myr_rate: rate };
+            }
+            return { ...p, myr_rate: null };
+          }),
+        );
+      }
+
+      onSave(next);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Modal
@@ -289,15 +335,37 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
           />
         </div>
         <div>
-          <label style={labelStyle}>{isRecurring ? 'Amount per period (RM)' : 'Amount (RM)'}</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
-            style={inputStyle}
-          />
+          <label style={labelStyle}>
+            {isRecurring ? `Amount per period (${form.currency})` : `Amount (${form.currency})`}
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <select
+              value={form.currency}
+              onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value as ExpenseCurrency }))}
+              style={{ ...inputStyle, width: 84, fontWeight: 700 }}
+              title="Bill currency — non-RM amounts are converted to MYR for KPI totals using the FX rate snapshotted at the expense date."
+            >
+              {EXPENSE_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          {form.currency !== 'RM' && form.myr_rate != null && (
+            <div style={{ fontSize: 10, color: C.slate, marginTop: 4 }}>
+              Rate · 1 {form.currency} = RM {Number(form.myr_rate).toFixed(4)} (snapshotted {form.expense_date})
+            </div>
+          )}
+          {form.currency !== 'RM' && form.myr_rate == null && (
+            <div style={{ fontSize: 10, color: C.slate, marginTop: 4 }}>
+              Rate will be fetched from frankfurter.app on save.
+            </div>
+          )}
         </div>
 
         <div style={{ gridColumn: '1/-1' }}>
@@ -404,6 +472,8 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
               <PeriodEditor
                 key={i}
                 period={p}
+                baselineAmount={form.amount}
+                baselineCurrency={form.currency}
                 onChange={(patch) => updatePeriod(i, patch)}
                 onRemove={() => removePeriod(i)}
                 storagePath={`expenses/${form.id}/period-${p.period}`}
@@ -459,21 +529,21 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
           Cancel
         </button>
         <button
-          onClick={() => onSave(form)}
-          disabled={!valid}
+          onClick={handleSave}
+          disabled={!valid || isSaving}
           style={{
             padding: '10px 24px',
             borderRadius: 10,
             border: 'none',
-            background: !valid ? C.slate : C.green,
+            background: !valid || isSaving ? C.slate : C.green,
             color: C.white,
             fontFamily: 'Figtree',
             fontSize: 13,
             fontWeight: 700,
-            cursor: !valid ? 'not-allowed' : 'pointer',
+            cursor: !valid ? 'not-allowed' : isSaving ? 'wait' : 'pointer',
           }}
         >
-          {isNew ? 'Create Expense' : 'Save Changes'}
+          {isSaving ? 'Saving…' : isNew ? 'Create Expense' : 'Save Changes'}
         </button>
       </div>
     </Modal>
@@ -482,16 +552,27 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
 
 function PeriodEditor({
   period,
+  baselineAmount,
+  baselineCurrency,
   onChange,
   onRemove,
   storagePath,
 }: {
   period: ExpensePeriod;
+  /** Parent expense's `amount` — shown as the period's amount placeholder
+   *  when the period has no override, and used as the fallback elsewhere. */
+  baselineAmount: number;
+  /** Parent expense's `currency` — periods inherit it (no per-period currency
+   *  override); used here only for label / placeholder formatting. */
+  baselineCurrency: ExpenseCurrency;
   onChange: (patch: Partial<ExpensePeriod>) => void;
   onRemove: () => void;
   storagePath: string;
 }) {
   const [periodInput, setPeriodInput] = useState(period.period);
+  const [amountDraft, setAmountDraft] = useState<string>(
+    period.amount !== null && period.amount !== undefined ? String(period.amount) : '',
+  );
   const [confirmRemove, setConfirmRemove] = useState(false);
   const hasData = period.status !== 'Pending' || !!period.paid_on || (period.attachments?.length ?? 0) > 0;
 
@@ -499,6 +580,39 @@ function PeriodEditor({
     const patch: Partial<ExpensePeriod> = { status };
     if (status === 'Paid' && !period.paid_on) patch.paid_on = todayISO();
     if (status !== 'Paid') patch.paid_on = null;
+    onChange(patch);
+  };
+
+  const handleAmountChange = (raw: string) => {
+    setAmountDraft(raw);
+    if (raw.trim() === '') {
+      onChange({ amount: null });
+      return;
+    }
+    const n = parseFloat(raw);
+    if (Number.isFinite(n) && n >= 0) onChange({ amount: n });
+  };
+
+  /** Receives parsed fields from the per-period AI drop-zone. Writes ONLY to
+   *  this period; entity/category stay locked at the parent. */
+  const handlePeriodApply = ({
+    fields,
+    attachment,
+  }: {
+    fields: { amount: number | null; expense_date: string | null; reference: string | null };
+    attachment: import('@/shared/types').Attachment;
+  }) => {
+    const patch: Partial<ExpensePeriod> = {
+      attachments: [attachment, ...(period.attachments ?? [])],
+      status: 'Paid',
+    };
+    if (fields.amount !== null) {
+      patch.amount = fields.amount;
+      setAmountDraft(String(fields.amount));
+    }
+    if (fields.reference) patch.reference = fields.reference;
+    if (fields.expense_date) patch.paid_on = fields.expense_date;
+    else if (!period.paid_on) patch.paid_on = todayISO();
     onChange(patch);
   };
 
@@ -601,12 +715,43 @@ function PeriodEditor({
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <label style={{ ...labelStyle, fontSize: 10 }}>Amount ({baselineCurrency})</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={amountDraft}
+            onChange={(e) => handleAmountChange(e.target.value)}
+            placeholder={baselineAmount.toFixed(2)}
+            style={{ ...inputStyle, padding: '6px 10px' }}
+          />
+          <div style={{ fontSize: 10, color: C.slate, marginTop: 4 }}>
+            {period.amount === null || period.amount === undefined
+              ? `Uses default · ${baselineCurrency} ${baselineAmount.toFixed(2)}`
+              : `Override · default is ${baselineCurrency} ${baselineAmount.toFixed(2)}`}
+          </div>
+        </div>
+        <div>
+          <label style={{ ...labelStyle, fontSize: 10 }}>Reference</label>
+          <input
+            value={period.reference ?? ''}
+            onChange={(e) => onChange({ reference: e.target.value || null })}
+            placeholder="Per-period invoice ref"
+            style={{ ...inputStyle, padding: '6px 10px' }}
+          />
+        </div>
+      </div>
+
       <div>
         <label style={{ ...labelStyle, fontSize: 10 }}>Invoice / Receipt for {formatPeriodLabel(period.period)}</label>
-        <AttachmentsField
-          value={period.attachments ?? []}
-          onChange={(next) => onChange({ attachments: next })}
+        <PeriodInvoicePrefillField
           storagePath={storagePath}
+          attachments={period.attachments ?? []}
+          onAttachmentsChange={(next) => onChange({ attachments: next })}
+          onApply={handlePeriodApply}
+          baselineCurrency={baselineCurrency}
         />
       </div>
     </div>

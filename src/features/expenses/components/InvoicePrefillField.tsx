@@ -260,7 +260,18 @@ function DetectedChips({
   onRemove: (key: keyof ParsedExpenseInvoice) => void;
 }) {
   const chips: { key: keyof ParsedExpenseInvoice; label: string; value: string }[] = [];
-  if (parsed.amount !== null) chips.push({ key: 'amount', label: 'Amount', value: `RM ${parsed.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` });
+  // Show the AI-detected currency on the amount chip; fall back to RM only when
+  // the model truly couldn't tell. (Was hardcoded RM — silently masked USD/SGD
+  // subscriptions even though the model returned the right token.)
+  if (parsed.amount !== null) {
+    const cur = parsed.currency ?? 'RM';
+    chips.push({ key: 'amount', label: 'Amount', value: `${cur} ${parsed.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` });
+  }
+  // Separate chip when the model detected a non-RM currency without an amount
+  // (rare but possible — keeps the override visible / removable).
+  if (parsed.currency && parsed.currency !== 'RM' && parsed.amount === null) {
+    chips.push({ key: 'currency', label: 'Currency', value: parsed.currency });
+  }
   if (parsed.expense_date) chips.push({ key: 'expense_date', label: 'Date', value: parsed.expense_date });
   if (parsed.category) chips.push({ key: 'category', label: 'Category', value: parsed.category });
   if (parsed.reference) chips.push({ key: 'reference', label: 'Ref', value: parsed.reference });

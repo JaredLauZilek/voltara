@@ -68,7 +68,13 @@ Output ONLY a JSON object matching this schema, nothing else:
 Rules:
 - Return null when you are genuinely unsure. DO NOT guess.
 - "amount" must be the final payable total, NOT the subtotal.
-- "currency" must be one of the four ISO-like tokens above. If you see "MYR" → "RM". If "RMB" → "CNY". If a bare "$" with no other clue, return null.
+- "currency" must be one of the four ISO-like tokens above. Map common symbols and aliases — DO NOT default to RM when the invoice clearly shows another currency:
+  · "RM", "MYR" → "RM"
+  · "USD", "US$", "USD$" → "USD"
+  · "SGD", "S$", "SG$" → "SGD"
+  · "CNY", "RMB", "¥", "￥", "CN¥" → "CNY"
+  · A bare "$" with no other clue (no "US", "S", "MYR" nearby and no vendor-country hint) → return null
+  · Subscriptions billed by US-based vendors (Wix, Google, AWS, Anthropic, OpenAI, Adobe, GitHub, Figma, Notion, Linear, Stripe, Apple, Cloudflare, etc.) shown with "$" → "USD" unless explicitly stated otherwise.
 - Dates: convert any human format (DD/MM/YYYY, "12 May 2026", etc.) to YYYY-MM-DD. Assume DD/MM order for ambiguous numeric dates (MY locale).
 - "vendor_name" is the COMPANY THAT ISSUED the invoice (top of the page, with a logo or letterhead) — NOT the bill-to / recipient.
 ${categoryRule}

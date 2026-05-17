@@ -19,6 +19,7 @@ import { InvoicePdf } from '@/features/invoices/pdf/InvoicePdf';
 import { POPdf } from '@/features/purchase-orders/pdf/POPdf';
 import { toCSV } from './csv';
 import { inPeriod, type Period } from './period';
+import { toMYRSnapshot } from '@/shared/lib/fxRate';
 
 export interface ExportInputs {
   period: Period;
@@ -74,9 +75,30 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   // ── Filter to period ─────────────────────────────────────────────────────
   const periodInvoices = inputs.invoices.filter((i) => inPeriod(i.issue_date, period));
   const periodBills    = inputs.bills.filter((b) => inPeriod(b.bill_date, period));
-  const periodExpenses = inputs.expenses.filter((e) => inPeriod(e.expense_date, period));
   const periodPOs      = inputs.pos.filter((p) => inPeriod(p.created_date, period));
   const periodQuotes   = inputs.quotes.filter((q) => inPeriod(q.valid_from, period));
+
+  // Expenses split: one-off filtered by their own date as before, recurring
+  // expanded to one row per Paid period that falls in this calendar month.
+  // The recurring split fixes the long-standing bug where a subscription
+  // started in February would never appear in March/April/May exports.
+  const periodKey = `${period.year}-${String(period.month).padStart(2, '0')}`;
+  const oneOffExpenses = inputs.expenses
+    .filter((e) => e.recurrence === 'None')
+    .filter((e) => inPeriod(e.expense_date, period));
+  const recurringRows = inputs.expenses
+    .filter((e) => e.recurrence !== 'None')
+    .flatMap((e) =>
+      (e.periods ?? [])
+        .filter((p) => p.status === 'Paid' && p.period === periodKey)
+        .map((p) => ({ parent: e, period: p }))
+    );
+  /** Effective amount/reference for a recurring row (per-period override falls
+   *  back to the parent expense's baseline). */
+  const resolvedAmount = (parent: typeof inputs.expenses[number], p: typeof recurringRows[number]['period']) =>
+    p.amount ?? parent.amount;
+  const resolvedReference = (parent: typeof inputs.expenses[number], p: typeof recurringRows[number]['period']) =>
+    p.reference ?? parent.reference;
 
   // Outstanding receivables/payables are NOT period-filtered — the accountant
   // wants the current open ledger regardless of when the doc was issued.
@@ -97,7 +119,8 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   // ── Estimate work for progress reporting ─────────────────────────────────
   const totalAttachmentDownloads =
     periodBills.reduce((n, b) => n + (b.attachments?.length ?? 0), 0) +
-    periodExpenses.reduce((n, e) => n + (e.attachments?.length ?? 0), 0);
+    oneOffExpenses.reduce((n, e) => n + (e.attachments?.length ?? 0), 0) +
+    recurringRows.reduce((n, r) => n + (r.period.attachments?.length ?? 0), 0);
   const totalPdfRenders = periodInvoices.length + periodPOs.length;
   const totalSteps = Math.max(1, totalPdfRenders + totalAttachmentDownloads + 6); // +6 for csv + readme bookkeeping
   let stepsDone = 0;
@@ -115,9 +138,22 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   const cogs = periodBills
     .filter((b) => b.status === 'Paid')
     .reduce((s, b) => s + b.amount + b.tax, 0);
-  const opex = periodExpenses
-    .filter((e) => e.status === 'Paid')
-    .reduce((s, e) => s + e.amount, 0);
+  // Convert to MYR so the P&L line is consistent — non-RM subscriptions
+  // (USD AWS, USD Anthropic, etc.) need the same treatment as multi-currency
+  // bills/POs. Uses the rate snapshotted at the expense's date (per-period
+  // for recurring rows) so historical exports stay stable.
+  const opex =
+    oneOffExpenses
+      .filter((e) => e.status === 'Paid')
+      .reduce((s, e) => s + toMYRSnapshot(e.amount, e.myr_rate, e.currency), 0) +
+    recurringRows.reduce(
+      (s, r) => s + toMYRSnapshot(
+        resolvedAmount(r.parent, r.period),
+        r.period.myr_rate ?? r.parent.myr_rate,
+        r.parent.currency,
+      ),
+      0,
+    );
   const gross = revenue - cogs;
   const net = gross - opex;
 
@@ -152,8 +188,27 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
           .map(({ status, count, total }) => ['invoices', status, count, total.toFixed(2)] as const),
         ...statusBuckets(periodBills, (b) => b.status, (b) => b.amount + b.tax)
           .map(({ status, count, total }) => ['bills', status, count, total.toFixed(2)] as const),
-        ...statusBuckets(periodExpenses, (e) => e.status, (e) => e.amount)
-          .map(({ status, count, total }) => ['expenses', status, count, total.toFixed(2)] as const),
+        // Combined: one entry per one-off row + one per Paid recurring period.
+        // Recurring rows are always Paid (filter above), so they only land in the
+        // Paid bucket — Pending recurring periods are intentionally invisible here.
+        ...statusBuckets(
+          [
+            // MYR-equivalents — period-totals is a cross-currency aggregate
+            // and the accountant expects all 'total_rm' columns in the same
+            // currency. Native amounts live in the per-row expenses.csv.
+            ...oneOffExpenses.map((e) => ({ status: e.status, amount: toMYRSnapshot(e.amount, e.myr_rate, e.currency) })),
+            ...recurringRows.map((r) => ({
+              status: 'Paid' as const,
+              amount: toMYRSnapshot(
+                resolvedAmount(r.parent, r.period),
+                r.period.myr_rate ?? r.parent.myr_rate,
+                r.parent.currency,
+              ),
+            })),
+          ],
+          (e) => e.status,
+          (e) => e.amount,
+        ).map(({ status, count, total }) => ['expenses', status, count, total.toFixed(2)] as const),
         ...statusBuckets(periodPOs, (p) => p.status, (p) => calcPOTotal(p.line_items, p.discount))
           .map(({ status, count, total }) => ['purchase_orders', status, count, total.toFixed(2)] as const),
       ].map((r) => [...r])
@@ -356,26 +411,72 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
   }
 
   // ── 04-expenses ─────────────────────────────────────────────────────────
+  // Two row shapes: one-off (today's behavior) + one Paid period per recurring
+  // expense that landed in this month. Recurring rows get a composite id
+  // ("EXP-XXXXXX / 2026-02") so the accountant can sort/group on it.
   zip.file(
     '04-expenses/expenses.csv',
     toCSV(
-      ['id', 'expense_date', 'category', 'payee', 'supplier_id', 'entity', 'amount',
-       'payment_method', 'reference', 'recurrence', 'status', 'paid_on', 'notes'],
-      periodExpenses.map((e) => [
-        e.id, e.expense_date, e.category, e.payee, e.supplier_id ?? '', e.entity ?? '',
-        e.amount.toFixed(2), e.payment_method ?? '', e.reference ?? '', e.recurrence,
-        e.status, e.paid_on ?? '', e.notes ?? '',
-      ])
+      // Both native amount and MYR-equivalent: native is what the user actually
+      // paid, MYR is what the accountant uses for cross-currency aggregates.
+      // `myr_rate` is the snapshotted rate used for the conversion — included
+      // so the accountant can audit / re-derive the MYR column.
+      ['id', 'expense_date', 'category', 'payee', 'supplier_id', 'entity', 'currency', 'amount',
+       'myr_rate', 'amount_myr', 'payment_method', 'reference', 'recurrence', 'status', 'paid_on', 'notes'],
+      [
+        ...oneOffExpenses.map((e) => [
+          e.id, e.expense_date, e.category, e.payee, e.supplier_id ?? '', e.entity ?? '',
+          e.currency, e.amount.toFixed(2),
+          e.myr_rate != null ? Number(e.myr_rate).toFixed(6) : '',
+          toMYRSnapshot(e.amount, e.myr_rate, e.currency).toFixed(2),
+          e.payment_method ?? '', e.reference ?? '', e.recurrence,
+          e.status, e.paid_on ?? '', e.notes ?? '',
+        ]),
+        ...recurringRows.map(({ parent, period: p }) => {
+          const native = resolvedAmount(parent, p);
+          const rate = p.myr_rate ?? parent.myr_rate;
+          return [
+            `${parent.id} / ${p.period}`,
+            p.paid_on ?? `${p.period}-01`,
+            parent.category,
+            parent.payee,
+            parent.supplier_id ?? '',
+            parent.entity ?? '',
+            parent.currency,
+            native.toFixed(2),
+            rate != null ? Number(rate).toFixed(6) : '',
+            toMYRSnapshot(native, rate, parent.currency).toFixed(2),
+            parent.payment_method ?? '',
+            resolvedReference(parent, p) ?? '',
+            parent.recurrence,
+            'Paid',
+            p.paid_on ?? '',
+            parent.notes ?? '',
+          ];
+        }),
+      ]
     )
   );
 
-  for (const e of periodExpenses) {
+  // Attachments: top-level for one-off, per-period for recurring (filed under
+  // the period subfolder so the accountant can match invoice ↔ row by name).
+  for (const e of oneOffExpenses) {
     for (const att of e.attachments ?? []) {
       onProgress({ message: `Downloading ${e.id} / ${att.name}…`, fraction: stepsDone / totalSteps });
       const blob = await fetchAttachmentBlob(att.storage_path);
       if (!blob) { tick(`Skipped ${att.name}`); continue; }
       const ext = deriveExtFromMime(att.mime);
       zip.file(`04-expenses/attachments/${safeFile(e.id)}-${safeFile(att.name) || 'file'}.${ext}`, blob);
+      tick(`Saved ${att.name}`);
+    }
+  }
+  for (const { parent, period: p } of recurringRows) {
+    for (const att of p.attachments ?? []) {
+      onProgress({ message: `Downloading ${parent.id} / ${p.period} / ${att.name}…`, fraction: stepsDone / totalSteps });
+      const blob = await fetchAttachmentBlob(att.storage_path);
+      if (!blob) { tick(`Skipped ${att.name}`); continue; }
+      const ext = deriveExtFromMime(att.mime);
+      zip.file(`04-expenses/attachments/${safeFile(parent.id)}-${p.period}-${safeFile(att.name) || 'file'}.${ext}`, blob);
       tick(`Saved ${att.name}`);
     }
   }
