@@ -210,6 +210,32 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['purchase_orders']['Row'], 'created_at' | 'currency'> & { created_at?: string; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
         Update: Partial<Database['public']['Tables']['purchase_orders']['Insert']>;
       };
+      sales_orders: {
+        Row: {
+          id: string;
+          quote_id: string;
+          customer_id: string;
+          customer_po_ref: string;
+          customer_po_date: string;
+          line_items: LineItem[];
+          discount: number;
+          notes: string | null;
+          status: 'Open' | 'Confirmed' | 'Fulfilled' | 'Cancelled';
+          attachments: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          created_date: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['sales_orders']['Row'], 'created_at' | 'status' | 'attachments' | 'line_items' | 'discount' | 'notes' | 'created_date'> & {
+          created_at?: string;
+          status?: 'Open' | 'Confirmed' | 'Fulfilled' | 'Cancelled';
+          attachments?: { name: string; mime: string; storage_path: string; size: number; uploaded_at: string }[];
+          line_items?: LineItem[];
+          discount?: number;
+          notes?: string | null;
+          created_date?: string;
+        };
+        Update: Partial<Database['public']['Tables']['sales_orders']['Insert']>;
+      };
       expense_entities: {
         Row: { name: string; created_at: string };
         Insert: { name: string; created_at?: string };
