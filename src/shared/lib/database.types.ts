@@ -210,6 +210,31 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['purchase_orders']['Row'], 'created_at' | 'currency'> & { created_at?: string; currency?: 'RM' | 'CNY' | 'SGD' | 'USD' };
         Update: Partial<Database['public']['Tables']['purchase_orders']['Insert']>;
       };
+      tasks: {
+        Row: {
+          id: string;
+          title: string;
+          notes: string | null;
+          due_date: string | null;
+          priority: 'Low' | 'Normal' | 'High';
+          done: boolean;
+          done_at: string | null;
+          related_kind: 'installation' | 'invoice' | 'bill' | 'expense' | 'quote' | 'customer' | 'supplier' | null;
+          related_id: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'created_at' | 'priority' | 'done' | 'done_at' | 'notes' | 'due_date' | 'related_kind' | 'related_id'> & {
+          created_at?: string;
+          priority?: 'Low' | 'Normal' | 'High';
+          done?: boolean;
+          done_at?: string | null;
+          notes?: string | null;
+          due_date?: string | null;
+          related_kind?: 'installation' | 'invoice' | 'bill' | 'expense' | 'quote' | 'customer' | 'supplier' | null;
+          related_id?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['tasks']['Insert']>;
+      };
       sales_orders: {
         Row: {
           id: string;

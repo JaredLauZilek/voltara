@@ -88,6 +88,13 @@ export function InstallationsScreen() {
   const modalRow =
     modal && modal !== 'new' ? (installations.find((r) => r.id === modal.id) ?? modal) : null;
 
+  // Quote ids already linked to an installation — the modal excludes these so
+  // a single Case Won quote can only be scheduled once. When editing, the
+  // modal re-includes the current row's own quote.
+  const usedQuoteIds = new Set(
+    installations.flatMap((i) => (i.quote_id ? [i.quote_id] : []))
+  );
+
   const handleSave = (row: InstallationInsert) => {
     if (modal === 'new') {
       // Create flow: close the modal so the table can refresh and the user
@@ -284,6 +291,7 @@ export function InstallationsScreen() {
           onSave={handleSave}
           isSaving={createMut.isPending || updateMut.isPending}
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
+          usedQuoteIds={usedQuoteIds}
         />
       )}
 

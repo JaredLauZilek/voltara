@@ -19,6 +19,8 @@ interface Props {
   onSave: (row: InstallationInsert) => void;
   isSaving?: boolean;
   onDelete?: (id: string) => void;
+  /** Quote ids already linked to another installation — excluded from the picker. */
+  usedQuoteIds?: Set<string>;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -41,7 +43,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function InstallationModal({ installation, onClose, onSave, isSaving = false, onDelete }: Props) {
+export function InstallationModal({ installation, onClose, onSave, isSaving = false, onDelete, usedQuoteIds }: Props) {
   const isNew = !installation;
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
@@ -92,10 +94,17 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
     });
   };
 
-  // Only Case Won / Sent / Draft quotes are eligible — Lost & Expired are dead
+  // Only Case Won quotes are eligible, and only if they're not already linked
+  // to another installation. When editing, keep the current row's own quote in
+  // the list so it stays selectable.
   const eligibleQuotes = useMemo(
-    () => quotes.filter((q) => ['Draft', 'Sent', 'Case Won'].includes(q.status)),
-    [quotes]
+    () =>
+      quotes.filter((q) => {
+        if (q.status !== 'Case Won') return false;
+        if (q.id === installation?.quote_id) return true;
+        return !usedQuoteIds?.has(q.id);
+      }),
+    [quotes, usedQuoteIds, installation?.quote_id]
   );
 
   const linkedQuote = quotes.find((q) => q.id === form.quote_id) ?? null;

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ScreenId } from './nav';
 import { OverviewScreen } from '@/features/overview';
+import { TodoScreen } from '@/features/todo';
 import { InvoicesScreen } from '@/features/invoices';
 import { InstallationsScreen } from '@/features/installations';
 import { CustomersScreen } from '@/features/customers';
@@ -23,6 +24,7 @@ import { SupabaseHealthScreen } from '@/features/supabase-health';
 
 export const ROUTES: Record<ScreenId, ReactNode> = {
   overview:       <OverviewScreen />,
+  todo:           <TodoScreen />,
   invoices:       <InvoicesScreen />,
   installations:  <InstallationsScreen />,
   customers:      <CustomersScreen />,

@@ -3,6 +3,7 @@
 
 import {
   LayoutDashboard,
+  ListTodo,
   Wrench,
   ShoppingCart,
   ReceiptText,
@@ -27,6 +28,7 @@ import {
 
 export type ScreenId =
   | 'overview'
+  | 'todo'
   | 'invoices'
   | 'installations'
   | 'customers'
@@ -63,6 +65,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: null,
     items: [
       { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+      { id: 'todo',     icon: ListTodo,        label: 'To-Do' },
     ],
   },
   {
@@ -118,6 +121,7 @@ export const NAV_SECTIONS: NavSection[] = [
 
 export const SCREEN_TITLES: Record<ScreenId, string> = {
   overview:       'Overview',
+  todo:           'To-Do',
   invoices:       'Invoices',
   installations:  'Installations',
   customers:      'Customers',

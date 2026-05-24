@@ -162,7 +162,7 @@ export function SupabaseHealthScreen() {
         ) : (
           <>
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 11 }}>Database size</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Database size</div>
               <div style={{ fontSize: 28, fontWeight: 700, color: C.green, letterSpacing: '-0.03em', marginTop: 4 }}>
                 {fmtBytes(db.data?.db_bytes ?? 0)}
               </div>
