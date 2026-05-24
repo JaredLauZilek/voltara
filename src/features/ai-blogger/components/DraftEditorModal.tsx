@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
+import { supabase } from '@/shared/lib/supabase';
 import type { BlogDraft, BlogDraftUpdate, DraftStatus } from '../types';
 import { DRAFT_STATUSES } from '../types';
 
@@ -11,6 +12,8 @@ interface Props {
   onDelete: () => void;
   isSaving: boolean;
 }
+
+const BUCKET = 'attachments';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -34,6 +37,37 @@ const labelStyle: React.CSSProperties = {
 export function DraftEditorModal({ draft, onClose, onSave, onDelete, isSaving }: Props) {
   const [form, setForm] = useState<BlogDraft>(draft);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handlePickImage = async (file: File) => {
+    setUploadError(null);
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please choose an image file (PNG / JPG / WebP).');
+      return;
+    }
+    if (file.size > 5_000_000) {
+      setUploadError('Image is over 5 MB. Please pick a smaller file.');
+      return;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `blog/${draft.id}/cover-${Date.now()}.${ext}`;
+    setUploading(true);
+    try {
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      setForm((f) => ({ ...f, cover_image_url: data.publicUrl }));
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Modal title={draft.title || 'Untitled draft'} subtitle={draft.id} onClose={onClose}>
@@ -72,6 +106,114 @@ export function DraftEditorModal({ draft, onClose, onSave, onDelete, isSaving }:
             rows={2}
             style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
           />
+        </div>
+
+        <div style={{ gridColumn: '1/-1' }}>
+          <label style={labelStyle}>Featured image</label>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            {form.cover_image_url ? (
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <img
+                  src={form.cover_image_url}
+                  alt="Cover preview"
+                  style={{
+                    width: 140,
+                    height: 90,
+                    objectFit: 'cover',
+                    borderRadius: 10,
+                    border: `1px solid ${C.border}`,
+                    background: C.seasalt,
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: 140,
+                  height: 90,
+                  borderRadius: 10,
+                  border: `1px dashed ${C.border}`,
+                  background: C.seasalt,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  fontSize: 11,
+                  color: C.slate,
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  padding: 8,
+                }}
+              >
+                No image
+              </div>
+            )}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handlePickImage(file);
+                  e.target.value = '';
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 10,
+                    border: `1px solid ${C.green}`,
+                    background: C.white,
+                    color: C.green,
+                    fontFamily: 'Figtree',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: uploading ? 'wait' : 'pointer',
+                    opacity: uploading ? 0.6 : 1,
+                  }}
+                >
+                  {uploading ? 'Uploading…' : form.cover_image_url ? 'Replace image' : '⤴ Upload image'}
+                </button>
+                {form.cover_image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, cover_image_url: null }))}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 10,
+                      border: `1px solid ${C.border}`,
+                      background: 'transparent',
+                      color: C.error,
+                      fontFamily: 'Figtree',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                value={form.cover_image_url ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, cover_image_url: e.target.value || null }))}
+                placeholder="…or paste an image URL"
+                style={{ ...inputStyle, fontSize: 12 }}
+              />
+              {uploadError && (
+                <div style={{ fontSize: 11, color: C.error, fontWeight: 600 }}>{uploadError}</div>
+              )}
+              <div style={{ fontSize: 11, color: C.slate }}>
+                Used as the post's cover image on the blog listing and at the top of the post. Falls back to the default in AI Blogger → Settings when empty.
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style={{ gridColumn: '1/-1' }}>
@@ -156,6 +298,7 @@ export function DraftEditorModal({ draft, onClose, onSave, onDelete, isSaving }:
             slug: form.slug,
             body_md: form.body_md,
             excerpt: form.excerpt,
+            cover_image_url: form.cover_image_url,
             status: form.status,
             target_keywords: form.target_keywords,
             scheduled_at: form.scheduled_at,

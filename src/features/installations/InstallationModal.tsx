@@ -139,7 +139,7 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
               meta: `${customer?.name ?? q.customer_id} · ${q.status}`,
             };
           })}
-          value={form.quote_id}
+          value={form.quote_id ?? null}
           onChange={(id) => handleQuoteChange(id ?? '')}
           placeholder="— Select a quote / proposal —"
           nullable

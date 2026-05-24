@@ -136,6 +136,7 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
         attachments: [],
         amount: null,
         reference: null,
+        myr_rate: null,
       };
       return { ...f, periods: [...periods, next] };
     });
@@ -468,17 +469,28 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {periods.map((p, i) => (
-              <PeriodEditor
-                key={i}
-                period={p}
-                baselineAmount={form.amount}
-                baselineCurrency={form.currency}
-                onChange={(patch) => updatePeriod(i, patch)}
-                onRemove={() => removePeriod(i)}
-                storagePath={`expenses/${form.id}/period-${p.period}`}
-              />
-            ))}
+            {periods.map((p, i) => {
+              // Periods on ExpenseInsert have optional amount/reference/myr_rate;
+              // PeriodEditor wants the Row-shape with explicit nulls. Coerce so
+              // the editor renders the "no override" placeholder consistently.
+              const normalized: ExpensePeriod = {
+                ...p,
+                amount: p.amount ?? null,
+                reference: p.reference ?? null,
+                myr_rate: p.myr_rate ?? null,
+              };
+              return (
+                <PeriodEditor
+                  key={i}
+                  period={normalized}
+                  baselineAmount={form.amount}
+                  baselineCurrency={form.currency}
+                  onChange={(patch) => updatePeriod(i, patch)}
+                  onRemove={() => removePeriod(i)}
+                  storagePath={`expenses/${form.id}/period-${p.period}`}
+                />
+              );
+            })}
           </div>
         </div>
       )}

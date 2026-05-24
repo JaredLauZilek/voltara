@@ -1,5 +1,5 @@
-import { createElement } from 'react';
-import { pdf } from '@react-pdf/renderer';
+import { createElement, type ReactElement } from 'react';
+import { pdf, type DocumentProps } from '@react-pdf/renderer';
 import { supabase } from '@/shared/lib/supabase';
 import { pdfFilename } from '@/shared/lib/format';
 import type { CompanyProfile, FormDesign } from '@/features/form-designs';
@@ -48,7 +48,7 @@ export async function sendQuoteViaWhatsApp(args: SendQuoteArgs): Promise<SendQuo
       salesManager: args.salesManager,
       profile: args.profile,
       design: args.design,
-    })
+    }) as ReactElement<DocumentProps>,
   ).toBlob();
 
   // 2. Upload to Storage. upsert:true so re-sends overwrite the same path.

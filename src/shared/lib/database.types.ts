@@ -6,7 +6,15 @@ import type { LineItem } from '@/shared/types';
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export interface Database {
+// supabase-js ≥ 2.50 requires every table / view in the schema to declare a
+// `Relationships` array (see postgrest-js GenericTable / GenericView). Our
+// hand-written stub omits relationships, so we splice an empty `Relationships`
+// onto every entry instead of repeating it in 25+ table blocks. Without this,
+// the GenericSchema constraint fails and every `supabase.from('x')` call falls
+// back to `never`, cascading TS errors across every feature.
+type WithRelationships<T> = { [K in keyof T]: T[K] & { Relationships: [] } };
+
+interface RawDatabase {
   public: {
     Tables: {
       customers: {
@@ -727,3 +735,12 @@ export interface Database {
     Enums: Record<string, never>;
   };
 }
+
+export type Database = {
+  public: {
+    Tables: WithRelationships<RawDatabase['public']['Tables']>;
+    Views: WithRelationships<RawDatabase['public']['Views']>;
+    Functions: RawDatabase['public']['Functions'];
+    Enums: RawDatabase['public']['Enums'];
+  };
+};

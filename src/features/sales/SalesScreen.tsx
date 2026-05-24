@@ -399,7 +399,6 @@ export function SalesScreen() {
                     quote={q}
                     customer={customerById.get(q.customer_id)}
                     manager={q.sales_manager_id ? managerById.get(q.sales_manager_id) : undefined}
-                    onDragStart={() => {}}
                     onDragEnd={() => setDragOverStatus(null)}
                     onClick={() => setModal(q)}
                   />

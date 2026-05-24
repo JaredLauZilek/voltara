@@ -351,7 +351,7 @@ export function TodoScreen() {
         empty="No unpaid bills."
       >
         {unpaidBills.map((b) => {
-          const supplier = supplierById.get(b.supplier_id);
+          const supplier = b.supplier_id ? supplierById.get(b.supplier_id) : null;
           const overdue = b.due_date && daysBetween(b.due_date, today) > 0 && b.status !== 'Paid';
           const total = (b.amount ?? 0) + (b.tax ?? 0);
           return (

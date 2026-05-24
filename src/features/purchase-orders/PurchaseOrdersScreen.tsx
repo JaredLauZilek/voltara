@@ -1,5 +1,5 @@
-import { createElement, useState } from 'react';
-import { pdf } from '@react-pdf/renderer';
+import { createElement, useState, type ReactElement } from 'react';
+import { pdf, type DocumentProps } from '@react-pdf/renderer';
 import { C, STATUS_COLORS } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
 import { Toolbar } from '@/shared/components/Toolbar';
@@ -46,7 +46,7 @@ export function PurchaseOrdersScreen() {
           products,
           profile: companyProfileQ.data,
           design: formDesign.design,
-        }),
+        }) as ReactElement<DocumentProps>,
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

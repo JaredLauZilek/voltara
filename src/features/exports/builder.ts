@@ -1,6 +1,6 @@
-import { createElement } from 'react';
+import { createElement, type ReactElement } from 'react';
 import JSZip from 'jszip';
-import { pdf } from '@react-pdf/renderer';
+import { pdf, type DocumentProps } from '@react-pdf/renderer';
 import { supabase } from '@/shared/lib/supabase';
 import type { CompanyProfile, FormDesign } from '@/features/form-designs';
 import type { Customer } from '@/features/customers';
@@ -337,7 +337,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
         profile: inputs.invoiceProfile,
         design: inputs.invoiceDesign,
         payments: paymentsByInvoice.get(inv.id) ?? [],
-      })
+      }) as ReactElement<DocumentProps>,
     ).toBlob();
     zip.file(`02-revenue/pdfs/${safeFile(`${inv.id} (${customer?.name ?? ''})`.trim())}.pdf`, blob);
     tick(`Rendered ${inv.id}`);
@@ -404,7 +404,7 @@ export async function buildExportZip(inputs: ExportInputs, onProgress: ProgressF
         products: inputs.products,
         profile: inputs.poProfile,
         design: inputs.poDesign,
-      })
+      }) as ReactElement<DocumentProps>,
     ).toBlob();
     zip.file(`03-cogs/po-pdfs/${safeFile(`${po.id} (${supplier?.name ?? ''})`.trim())}.pdf`, blob);
     tick(`Rendered ${po.id}`);
