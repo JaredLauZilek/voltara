@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { supabase } from '@/shared/lib/supabase';
 import { useSuppliers } from '@/features/suppliers';
+import { useInstallations } from '@/features/installations';
+import { useCustomers } from '@/features/customers';
 import type { Attachment } from '@/shared/types';
 import { parseInvoice, type ParsedInvoice } from '../lib/parseInvoice';
 
@@ -38,12 +40,31 @@ function deriveExt(mime: string, filename: string): string {
 
 export function InvoicePrefillField({ storagePath, onApply, attached, onClear }: Props) {
   const { data: suppliers = [] } = useSuppliers();
+  const { data: installations = [] } = useInstallations();
+  const { data: customers = [] } = useCustomers();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [stage, setStage] = useState<'idle' | 'reading' | 'parsed' | 'applying' | 'error'>('idle');
   const [parsed, setParsed] = useState<ParsedInvoice | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Only Completed installations are eligible to be linked to a bill (matches
+  // the same filter applied by BillModal's manual picker), so we hand the
+  // matcher the same candidate set.
+  const installationCandidates = useMemo(() => {
+    const customerById = new Map(customers.map((c) => [c.id, c]));
+    return installations
+      .filter((i) => i.status === 'Completed')
+      .map((i) => {
+        const c = customerById.get(i.customer_id);
+        return {
+          id: i.id,
+          customer_name: c?.name ?? i.customer_id,
+          customer_address: c?.address ?? '',
+        };
+      });
+  }, [installations, customers]);
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -55,7 +76,11 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
     setPendingFile(file);
     setStage('reading');
     try {
-      const result = await parseInvoice(file, suppliers.map((s) => ({ id: s.id, name: s.name })));
+      const result = await parseInvoice(
+        file,
+        suppliers.map((s) => ({ id: s.id, name: s.name })),
+        installationCandidates,
+      );
       setParsed(result);
       setStage('parsed');
     } catch (e) {
@@ -184,7 +209,7 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
             </div>
             <span style={{ fontSize: 11, color: C.slate }}>{pendingFile?.name}</span>
           </div>
-          <DetectedChips parsed={parsed} suppliers={suppliers} />
+          <DetectedChips parsed={parsed} suppliers={suppliers} installations={installations} customers={customers} />
           {error && (
             <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>{error}</div>
           )}
@@ -232,7 +257,17 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
 
 // ─── Detected-fields preview ────────────────────────────────────────────────
 
-function DetectedChips({ parsed, suppliers }: { parsed: ParsedInvoice; suppliers: { id: string; name: string }[] }) {
+function DetectedChips({
+  parsed,
+  suppliers,
+  installations,
+  customers,
+}: {
+  parsed: ParsedInvoice;
+  suppliers: { id: string; name: string }[];
+  installations: { id: string; customer_id: string }[];
+  customers: { id: string; name: string }[];
+}) {
   const chips: { label: string; value: string }[] = [];
   if (parsed.amount !== null) chips.push({ label: 'Amount', value: `${parsed.currency ?? ''} ${parsed.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`.trim() });
   if (parsed.currency && parsed.amount === null) chips.push({ label: 'Currency', value: parsed.currency });
@@ -245,6 +280,18 @@ function DetectedChips({ parsed, suppliers }: { parsed: ParsedInvoice; suppliers
     if (s) chips.push({ label: 'Supplier', value: s.name });
   } else if (parsed.vendor_guess) {
     chips.push({ label: 'Vendor (no match)', value: parsed.vendor_guess });
+  }
+  if (parsed.installation_id) {
+    const inst = installations.find((i) => i.id === parsed.installation_id);
+    const customer = inst ? customers.find((c) => c.id === inst.customer_id) : null;
+    if (inst) {
+      chips.push({
+        label: 'Installation',
+        value: `${inst.id} · ${customer?.name ?? ''}`.trim(),
+      });
+    }
+  } else if (parsed.site_hint) {
+    chips.push({ label: 'Site (no match)', value: parsed.site_hint });
   }
 
   if (chips.length === 0) {

@@ -20,6 +20,8 @@ interface Props {
   onSave: (row: InvoiceInsert) => void;
   isSaving?: boolean;
   onDelete?: (id: string) => void;
+  /** Quote ids already linked to another invoice — excluded from the picker. */
+  usedQuoteIds?: Set<string>;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -50,7 +52,7 @@ const STATUS_PILL: Record<string, { bg: string; color: string }> = {
   Cancelled:        { bg: '#FFF0E0', color: '#B45309' },
 };
 
-export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDelete }: Props) {
+export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDelete, usedQuoteIds }: Props) {
   const isNew = !invoice;
   const { data: products = [] } = useProducts();
   const { data: quotes = [] } = useQuotes();
@@ -78,10 +80,17 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
   );
 
   // Only Case Won quotes are eligible to be invoiced — billing only happens
-  // once a quote is accepted by the customer.
+  // once a quote is accepted by the customer. Quotes already linked to another
+  // invoice are excluded so a single quote can only be invoiced once; when
+  // editing, the current invoice's own quote stays selectable.
   const eligibleQuotes = useMemo(
-    () => quotes.filter((q) => q.status === 'Case Won'),
-    [quotes]
+    () =>
+      quotes.filter((q) => {
+        if (q.status !== 'Case Won') return false;
+        if (q.id === invoice?.quote_id) return true;
+        return !usedQuoteIds?.has(q.id);
+      }),
+    [quotes, usedQuoteIds, invoice?.quote_id]
   );
 
   const linkedQuote = quotes.find((q) => q.id === form.quote_id) ?? null;

@@ -44,6 +44,10 @@ interface ExtractedFields {
   reference: string | null;
   vendor_name: string | null;
   category: string | null;
+  /** Free-text customer / site description picked up from the invoice body
+   *  (e.g. "Installation at LSKK Venture Sdn Bhd, No 82a Jalan Taming Indah").
+   *  Client uses this to fuzzy-match against the installations list. */
+  site_hint: string | null;
 }
 
 function buildSystemPrompt(categories: string[] | undefined): string {
@@ -62,7 +66,8 @@ Output ONLY a JSON object matching this schema, nothing else:
   "due_date":   string | null,   // ISO YYYY-MM-DD
   "reference":  string | null,   // vendor's invoice number / ref
   "vendor_name": string | null,  // company name issuing the invoice (NOT the recipient)
-  "category":   string | null    // see category rule below
+  "category":   string | null,   // see category rule below
+  "site_hint":  string | null    // see site_hint rule below
 }
 
 Rules:
@@ -78,6 +83,7 @@ Rules:
 - Dates: convert any human format (DD/MM/YYYY, "12 May 2026", etc.) to YYYY-MM-DD. Assume DD/MM order for ambiguous numeric dates (MY locale).
 - "vendor_name" is the COMPANY THAT ISSUED the invoice (top of the page, with a logo or letterhead) — NOT the bill-to / recipient.
 ${categoryRule}
+- "site_hint" is a short free-text string that combines the END-CUSTOMER name and/or installation site address mentioned in the invoice description (e.g. "Installation at LSKK Venture Sdn Bhd, No 82a Jalan Taming Indah, Kajang"). This is the SITE WHERE THE WORK WAS DONE, NOT the contractor's office. Return null if the invoice description doesn't reference a specific customer or site.
 - No code fences, no prose, no commentary. JSON object only.`;
 }
 
@@ -178,6 +184,7 @@ Deno.serve(async (req) => {
     reference: typeof parsed.reference === 'string' && parsed.reference.trim().length > 0 ? parsed.reference.trim() : null,
     vendor_name: typeof parsed.vendor_name === 'string' && parsed.vendor_name.trim().length > 0 ? parsed.vendor_name.trim() : null,
     category: safeCategory,
+    site_hint: typeof parsed.site_hint === 'string' && parsed.site_hint.trim().length > 0 ? parsed.site_hint.trim() : null,
   };
 
   return json(200, { ok: true, fields });

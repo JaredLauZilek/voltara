@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { Modal } from '@/shared/components/Modal';
 import { supabase } from '@/shared/lib/supabase';
 import { AttachmentsField } from '@/shared/components/AttachmentsField';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { SupplierPicker } from '@/features/suppliers';
 import { useSuppliers } from '@/features/suppliers';
-import { todayISO } from '@/shared/lib/format';
+import { useInstallations } from '@/features/installations';
+import { useCustomers } from '@/features/customers';
+import { todayISO, formatDate } from '@/shared/lib/format';
 import { BILL_STATUSES, BILL_PAYMENT_METHODS, BILL_CURRENCIES } from './types';
 import { BillCategoryPicker } from './BillCategoryPicker';
 import { InvoicePrefillField } from './components/InvoicePrefillField';
@@ -19,6 +22,8 @@ interface Props {
   onClose: () => void;
   onSave: (row: BillInsert) => void;
   onDelete?: (id: string, attachments: Bill['attachments']) => void;
+  /** Installation ids already linked to another bill — excluded from the picker. */
+  usedInstallationIds?: Set<string>;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -41,9 +46,11 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
+export function BillModal({ bill, onClose, onSave, onDelete, usedInstallationIds }: Props) {
   const isNew = !bill;
   const { data: suppliers = [] } = useSuppliers();
+  const { data: installations = [] } = useInstallations();
+  const { data: customers = [] } = useCustomers();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [form, setForm] = useState<BillInsert>(
@@ -56,6 +63,7 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
       vendor_email: null,
       supplier_id: null,
       quote_id: null,
+      installation_id: null,
       amount: 0,
       tax: 0,
       currency: 'RM',
@@ -67,6 +75,33 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
       notes: null,
     }
   );
+
+  const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+
+  // Installations the user can still link to from this bill: only Completed
+  // jobs (a contractor bill arrives after the site visit is done) AND not
+  // already attached to a different bill. The bill being edited keeps its
+  // own installation visible so the link isn't lost — even if its status
+  // was later flipped away from Completed.
+  const linkableInstallations = useMemo(
+    () =>
+      installations.filter((i) => {
+        if (i.id === bill?.installation_id) return true;
+        if (i.status !== 'Completed') return false;
+        return !usedInstallationIds?.has(i.id);
+      }),
+    [installations, usedInstallationIds, bill?.installation_id]
+  );
+
+  // Drop the installation link the instant the category leaves 'Installation',
+  // so a stale FK isn't carried into an unrelated bill (e.g. "Office Supplies").
+  const handleCategoryChange = (name: string) => {
+    setForm((f) => ({
+      ...f,
+      category: name,
+      installation_id: name === 'Installation' ? f.installation_id : null,
+    }));
+  };
 
   const currency: BillCurrency = (form.currency ?? 'RM') as BillCurrency;
 
@@ -108,6 +143,17 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
         }
       } else if (fields.vendor_guess) {
         next.vendor = fields.vendor_guess;
+      }
+      // Linked installation — when the parser recognises the site, snap the
+      // category to Installation (the link only renders under that category)
+      // and attach. Respect the 1:1 invariant: if the matched installation is
+      // already on a different bill, skip the auto-link rather than override.
+      if (
+        fields.installation_id &&
+        (!usedInstallationIds || !usedInstallationIds.has(fields.installation_id) || fields.installation_id === bill?.installation_id)
+      ) {
+        next.installation_id = fields.installation_id;
+        next.category = 'Installation';
       }
       next.attachments = [attachment, ...(f.attachments ?? []).slice(1)];
       return next;
@@ -175,9 +221,48 @@ export function BillModal({ bill, onClose, onSave, onDelete }: Props) {
         <label style={labelStyle}>Category</label>
         <BillCategoryPicker
           value={form.category}
-          onChange={(name) => setForm((f) => ({ ...f, category: name }))}
+          onChange={handleCategoryChange}
         />
       </div>
+
+      {/* Linked installation — only meaningful for Installation-category bills.
+          Surfaces a curated list (excludes installations already on a bill) so
+          the 1:1 invariant from migration 0055 isn't violated client-side. */}
+      {form.category === 'Installation' && (
+        <div>
+          <label style={labelStyle}>Linked Installation</label>
+          <SearchableSelect
+            options={linkableInstallations.map((i) => {
+              const customer = customerById.get(i.customer_id);
+              // Address is whitespace-pre-wrapped in the source field; flatten
+              // newlines and squeeze runs so the meta line reads cleanly even
+              // when it wraps onto a second visible row.
+              const address = (customer?.address ?? '')
+                .replace(/\s+/g, ' ')
+                .trim();
+              const metaParts = [
+                formatDate(i.scheduled),
+                i.tech || 'no contractor',
+                address || null,
+              ].filter(Boolean) as string[];
+              return {
+                value: i.id,
+                label: `${i.id} · ${customer?.name ?? i.customer_id}`,
+                meta: metaParts.join(' · '),
+              };
+            })}
+            value={form.installation_id ?? null}
+            onChange={(id) => setForm((f) => ({ ...f, installation_id: id ?? null }))}
+            placeholder="— Select an installation —"
+            nullable
+            nullLabel="— No installation —"
+            metaBelow
+          />
+          <div style={{ fontSize: 11, color: C.slate, marginTop: 6 }}>
+            Only Completed installations are shown. One installation can only be linked to one bill — installations already paid for via another bill are hidden.
+          </div>
+        </div>
+      )}
 
       {/* Supplier */}
       <div>

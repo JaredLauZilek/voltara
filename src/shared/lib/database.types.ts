@@ -595,6 +595,10 @@ interface RawDatabase {
           vendor_email: string | null;
           supplier_id: string | null;
           quote_id: string | null;
+          // Soft link from an Installation-category bill back to the specific
+          // installation it pays for (migration 0055). Enforced 1:1 via a
+          // partial unique index — multiple NULLs are allowed.
+          installation_id: string | null;
           amount: number;
           tax: number;
           payment_method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Cheque' | 'Other' | null;

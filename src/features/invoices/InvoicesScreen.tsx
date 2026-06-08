@@ -43,6 +43,16 @@ export function InvoicesScreen() {
   const modalInvoice =
     modal && modal !== 'new' ? (invoices.find((inv) => inv.id === modal.id) ?? modal) : null;
 
+  // Quote ids already linked to a non-cancelled invoice. Passed to the modal
+  // so the picker hides quotes that have already been billed — a single quote
+  // can only be invoiced once, but cancelling an invoice frees its quote back
+  // up. The modal re-includes the current invoice's own quote when editing.
+  const usedQuoteIds = new Set(
+    invoices.flatMap((inv) =>
+      inv.quote_id && inv.status !== 'Cancelled' ? [inv.quote_id] : []
+    )
+  );
+
   const customerById = new Map(customers.map((c) => [c.id, c]));
   const productById = new Map(products.map((p) => [p.id, p]));
 
@@ -212,6 +222,7 @@ export function InvoicesScreen() {
           onSave={handleSave}
           isSaving={createMut.isPending || updateMut.isPending}
           onDelete={(id) => deleteMut.mutate(id, { onSuccess: () => setModal(null) })}
+          usedQuoteIds={usedQuoteIds}
         />
       )}
 

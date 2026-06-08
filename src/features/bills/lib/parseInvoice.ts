@@ -20,11 +20,24 @@ export interface ParsedInvoice {
   supplier_id: string | null;
   /** Free-text vendor name returned by the model, even when no supplier matched. */
   vendor_guess: string | null;
+  /** Resolved against the caller's installation list when category may be
+   *  "Installation" — null when there's no high-confidence match. */
+  installation_id: string | null;
+  /** Free-text site / customer name picked out of the invoice description.
+   *  Surfaced even when no installation matched so the user can see what the
+   *  parser saw and pick manually. */
+  site_hint: string | null;
 }
 
 interface SupplierLite {
   id: string;
   name: string;
+}
+
+interface InstallationLite {
+  id: string;
+  customer_name: string;
+  customer_address: string;
 }
 
 interface ApiResponse {
@@ -37,11 +50,16 @@ interface ApiResponse {
     due_date: string | null;
     reference: string | null;
     vendor_name: string | null;
+    site_hint: string | null;
   };
   error?: string;
 }
 
-export async function parseInvoice(file: File, suppliers: SupplierLite[]): Promise<ParsedInvoice> {
+export async function parseInvoice(
+  file: File,
+  suppliers: SupplierLite[],
+  installations: InstallationLite[] = [],
+): Promise<ParsedInvoice> {
   const file_base64 = await fileToBase64(file);
   const { data, error } = await supabase.functions.invoke<ApiResponse>('parse-invoice', {
     body: { file_base64, mime: file.type, filename: file.name },
@@ -51,6 +69,7 @@ export async function parseInvoice(file: File, suppliers: SupplierLite[]): Promi
 
   const fields = data.fields;
   const { supplier_id, vendor_guess } = matchSupplier(fields.vendor_name, suppliers);
+  const installation_id = matchInstallation(fields.site_hint, installations);
 
   return {
     amount: fields.amount,
@@ -61,6 +80,8 @@ export async function parseInvoice(file: File, suppliers: SupplierLite[]): Promi
     reference: fields.reference,
     supplier_id,
     vendor_guess,
+    installation_id,
+    site_hint: fields.site_hint,
   };
 }
 
@@ -115,4 +136,43 @@ function normalize(s: string): string {
     .replace(/[^\w\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Try to identify which installation the contractor invoice corresponds to.
+ *  We score each installation by how many normalized tokens of the
+ *  customer-name + address are also present in the parsed site_hint. The
+ *  highest-scoring installation wins, provided the score clears a small
+ *  confidence floor — otherwise we return null and let the user pick. */
+function matchInstallation(
+  siteHint: string | null,
+  installations: InstallationLite[],
+): string | null {
+  if (!siteHint || installations.length === 0) return null;
+  const hintTokens = new Set(
+    normalize(siteHint).split(' ').filter((t) => t.length >= 3),
+  );
+  if (hintTokens.size === 0) return null;
+
+  let best: { id: string; score: number } | null = null;
+  for (const inst of installations) {
+    const haystack = normalize(`${inst.customer_name} ${inst.customer_address}`);
+    const haystackTokens = haystack.split(' ').filter((t) => t.length >= 3);
+    if (haystackTokens.length === 0) continue;
+    // Count tokens from the installation that appear in the hint. Skip
+    // ultra-generic tokens that match every Malaysian address ("jalan",
+    // "taman", "no", numeric house numbers) so two unrelated installations
+    // in different streets don't tie.
+    const GENERIC = new Set(['jalan', 'taman', 'lorong', 'lot', 'no', 'bandar', 'desa']);
+    let score = 0;
+    for (const tok of haystackTokens) {
+      if (GENERIC.has(tok)) continue;
+      if (/^\d+$/.test(tok)) continue;
+      if (hintTokens.has(tok)) score++;
+    }
+    if (!best || score > best.score) best = { id: inst.id, score };
+  }
+  // Require at least 2 distinct non-generic token hits — a single hit on a
+  // bare customer name like "Yap" is too ambiguous to auto-link.
+  if (!best || best.score < 2) return null;
+  return best.id;
 }

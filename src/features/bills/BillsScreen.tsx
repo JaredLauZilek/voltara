@@ -177,6 +177,9 @@ export function BillsScreen() {
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={(id, attachments) => deleteMut.mutate({ id, attachments }, { onSuccess: () => setModal(null) })}
+          usedInstallationIds={
+            new Set(bills.flatMap((b) => (b.installation_id ? [b.installation_id] : [])))
+          }
         />
       )}
     </div>

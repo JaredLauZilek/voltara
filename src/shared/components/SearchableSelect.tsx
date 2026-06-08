@@ -18,10 +18,16 @@ interface Props {
   nullLabel?: string;      // label for the null option
   disabled?: boolean;
   style?: React.CSSProperties;
+  // When true, render meta on a second line below the label instead of
+  // crammed onto the right edge. Bumps row height to fit it. Use for options
+  // with long meta strings (e.g. customer addresses) that ellipsize too hard
+  // in the default single-line layout.
+  metaBelow?: boolean;
 }
 
-const ITEM_H = 40;
-const MAX_H = 300;
+const ITEM_H_DEFAULT = 40;
+const ITEM_H_STACKED = 60;
+const MAX_H = 320;
 const SEARCH_H = 52;
 const BUFFER = 4;
 
@@ -91,7 +97,9 @@ export function SearchableSelect({
   nullLabel = '— None —',
   disabled = false,
   style,
+  metaBelow = false,
 }: Props) {
+  const ITEM_H = metaBelow ? ITEM_H_STACKED : ITEM_H_DEFAULT;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
@@ -397,28 +405,60 @@ export function SearchableSelect({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0 14px',
+                          padding: metaBelow ? '6px 14px' : '0 14px',
                           cursor: 'pointer',
                           background: isSel ? C.honeydew : isHov ? C.seasalt : 'transparent',
                           borderBottom: `1px solid ${C.divider}`,
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: isSel ? 700 : 500,
-                            color: isSel ? C.green : isNull ? C.slate : '#1a1a1a',
-                            fontStyle: isNull ? 'italic' : 'normal',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            flex: 1,
-                            minWidth: 0,
-                          }}
-                        >
-                          <Highlight text={en.label} q={query} />
-                        </span>
-                        {meta && (
+                        {metaBelow && meta && !isNull ? (
+                          // Stacked layout: label on top, meta below — used when meta
+                          // strings are long (e.g. customer addresses).
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: isSel ? 700 : 600,
+                                color: isSel ? C.green : '#1a1a1a',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <Highlight text={en.label} q={query} />
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: C.slate,
+                                lineHeight: 1.35,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <Highlight text={meta} q={query} />
+                            </span>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isSel ? 700 : 500,
+                              color: isSel ? C.green : isNull ? C.slate : '#1a1a1a',
+                              fontStyle: isNull ? 'italic' : 'normal',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            <Highlight text={en.label} q={query} />
+                          </span>
+                        )}
+                        {!metaBelow && meta && (
                           <span
                             style={{
                               fontSize: 11,
