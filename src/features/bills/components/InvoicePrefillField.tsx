@@ -19,7 +19,7 @@ interface Props {
 }
 
 const BUCKET = 'attachments';
-const MAX_BYTES = 5_000_000;
+const MAX_BYTES = 10_000_000;
 const ACCEPTED = 'application/pdf,image/png,image/jpeg';
 
 function uid() {
@@ -69,7 +69,7 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
   const handleFile = async (file: File) => {
     setError(null);
     if (file.size > MAX_BYTES) {
-      setError(`"${file.name}" exceeds 5 MB.`);
+      setError(`"${file.name}" exceeds 10 MB.`);
       setStage('error');
       return;
     }
@@ -176,7 +176,7 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
               📎 Drag & drop or <span style={{ textDecoration: 'underline' }}>browse</span> the vendor invoice
             </div>
             <div style={{ fontSize: 11, color: C.slate, marginTop: 6 }}>
-              PDF, PNG, or JPG · max 5 MB · best-effort pre-fill, always review before saving
+              PDF, PNG, or JPG · max 10 MB · best-effort pre-fill, always review before saving
             </div>
           </div>
           <input
