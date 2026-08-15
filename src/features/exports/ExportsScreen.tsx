@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { C } from '@/shared/tokens';
 import { KPICard } from '@/shared/components/KPICard';
-import { useInvoices } from '@/features/invoices';
-import { useAllInvoicePayments } from '@/features/invoices/payments/hooks';
+import { useInvoices, useAllInvoicePayments } from '@/features/invoices';
 import { useBills } from '@/features/bills';
 import { useExpenses } from '@/features/expenses';
 import { usePurchaseOrders } from '@/features/purchase-orders';
@@ -206,7 +205,7 @@ export function ExportsScreen() {
         )}
 
         {error && (
-          <div style={{ marginTop: 14, padding: '10px 12px', background: '#FDEAEA', color: '#C0321A', fontSize: 12, fontWeight: 600, borderRadius: 8 }}>
+          <div style={{ marginTop: 14, padding: '10px 12px', background: C.errorBg, color: C.error, fontSize: 12, fontWeight: 600, borderRadius: 8 }}>
             {error}
           </div>
         )}
