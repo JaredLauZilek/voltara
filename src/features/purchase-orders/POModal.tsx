@@ -150,7 +150,7 @@ export function POModal({ po, isSaving = false, onClose, onSave, onDelete }: Pro
           const isCustom = !item.product_id;
           return (
           <div key={i} style={{ marginBottom: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr) 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
             <ReorderHandle index={i} count={form.line_items.length} onMove={moveItem} />
             {isCustom ? (
               <input

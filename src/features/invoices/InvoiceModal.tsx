@@ -292,7 +292,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
 
       <div>
         <label style={{ ...labelStyle, marginBottom: 10 }}>Line Items</label>
-        <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, marginBottom: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr) 70px 90px 90px 32px', gap: 8, marginBottom: 6 }}>
           {['', 'Product', 'Qty', 'Unit Price', 'Subtotal', ''].map((h, i) => (
             <div
               key={i}
@@ -307,7 +307,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           const itemProduct = products.find((x) => x.id === item.product_id);
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr) 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
                 <ReorderHandle index={i} count={form.line_items.length} onMove={moveItem} />
                 <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
                 <input
