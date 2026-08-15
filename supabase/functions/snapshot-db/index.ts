@@ -8,12 +8,27 @@ const SNAPSHOT_SECRET = Deno.env.get('SNAPSHOT_SECRET') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const KEEP = 3; // most recent N snapshots
+// Most recent N completed snapshots to retain. Raised from 3 to 7: with a
+// nightly cadence, 3 only lets you roll back three days, so a problem noticed
+// on Monday that started on Thursday has already aged out. A week of dailies
+// is the smallest window that survives a weekend.
+const KEEP = 7;
 const ATTACHMENT_BUCKET = 'attachments';
 const BACKUP_BUCKET = 'backups';
 
+// Rows fetched per PostgREST request. Also caps peak memory per table and
+// dodges the server-side max-rows ceiling, which silently truncated a bare
+// select('*') once a table passed 1000 rows.
+const PAGE = 1000;
+
+// A run killed by the edge runtime never reaches its own catch block, so its
+// meta row is stranded at 'pending' forever — that is how 34 nights of
+// failures went unnoticed. Each run sweeps older stragglers to 'failed' so
+// the Snapshots screen tells the truth even when the runtime SIGKILLs us.
+const STALE_PENDING_MS = 30 * 60 * 1000;
+
 // Tables we explicitly skip — snapshot_meta would self-reference and grow
-// the zip on every run; the audit log lives in the DB anyway.
+// the snapshot on every run; the audit log lives in the DB anyway.
 const SKIP_TABLES = new Set(['snapshot_meta']);
 
 const CORS_HEADERS = {
@@ -46,7 +61,20 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // 2. Create pending meta row up front so we can record errors against it
+  // 2. Reap stranded rows from previously-killed runs before adding our own.
+  const staleCutoff = new Date(Date.now() - STALE_PENDING_MS).toISOString();
+  const { data: reaped } = await supabase
+    .from('snapshot_meta')
+    .update({
+      status: 'failed',
+      error: 'Run was terminated by the edge runtime before it could finish (no completion record).',
+    })
+    .eq('status', 'pending')
+    .lt('taken_at', staleCutoff)
+    .select('id');
+  const reapedCount = reaped?.length ?? 0;
+
+  // 3. Create pending meta row up front so we can record errors against it
   const { data: metaRow, error: metaErr } = await supabase
     .from('snapshot_meta')
     .insert({ storage_path: '(pending)', trigger, status: 'pending' })
@@ -57,11 +85,16 @@ Deno.serve(async (req: Request) => {
   }
   const metaId = metaRow.id;
 
+  const takenAt = new Date().toISOString();
+  const stamp = takenAt.replace(/[:.]/g, '-');
+  const storagePath = `voltara-${stamp}.zip`;
+  const attachmentPrefix = `voltara-${stamp}-attachments`;
+
   try {
     const zip = new JSZip();
     const tableCounts: Record<string, number> = {};
 
-    // 3. Discover tables in public schema (excluding skip list)
+    // 4. Discover tables in public schema (excluding skip list)
     const { data: tableRows, error: tableErr } = await supabase
       .rpc('snapshot_list_tables');
     if (tableErr) throw new Error(`List tables: ${tableErr.message}`);
@@ -69,17 +102,33 @@ Deno.serve(async (req: Request) => {
       .map((r: { name: string }) => r.name)
       .filter((n: string) => !SKIP_TABLES.has(n));
 
-    // 4. Dump each table
+    // 5. Dump each table, one page at a time
     for (const t of tableNames) {
-      const { data, error } = await supabase.from(t).select('*');
-      if (error) throw new Error(`Dump ${t}: ${error.message}`);
-      tableCounts[t] = data?.length ?? 0;
-      zip.file(`tables/${t}.json`, JSON.stringify(data ?? [], null, 0));
+      const rows: unknown[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from(t).select('*').range(from, from + PAGE - 1);
+        if (error) throw new Error(`Dump ${t}: ${error.message}`);
+        const page = data ?? [];
+        rows.push(...page);
+        if (page.length < PAGE) break;
+      }
+      tableCounts[t] = rows.length;
+      zip.file(`tables/${t}.json`, JSON.stringify(rows, null, 0));
     }
 
-    // 5. Walk attachments bucket and copy every blob in
+    // 6. Copy attachments bucket → backup bucket, server-side.
+    //
+    //    This is the fix for the OOM. The old version downloaded every blob
+    //    into the isolate and held it in the zip, so peak memory grew with the
+    //    bucket (38 MB of attachments, doubled again by JSZip's output buffer)
+    //    until the runtime killed the process. Storage-to-storage copy moves
+    //    the bytes entirely inside Supabase — nothing transits this function,
+    //    so memory is now flat regardless of how large the bucket gets.
     let attachmentCount = 0;
     let attachmentBytes = 0;
+    const copyFailures: string[] = [];
+
     const walk = async (prefix: string) => {
       const { data: entries, error } = await supabase.storage
         .from(ATTACHMENT_BUCKET)
@@ -92,50 +141,60 @@ Deno.serve(async (req: Request) => {
           await walk(full);
           continue;
         }
-        const { data: blob, error: dlErr } = await supabase.storage
-          .from(ATTACHMENT_BUCKET).download(full);
-        if (dlErr || !blob) {
-          console.warn(`Skipped ${full}: ${dlErr?.message}`);
+        const { error: cpErr } = await supabase.storage
+          .from(ATTACHMENT_BUCKET)
+          .copy(full, `${attachmentPrefix}/${full}`, { destinationBucket: BACKUP_BUCKET });
+        if (cpErr) {
+          copyFailures.push(`${full}: ${cpErr.message}`);
           continue;
         }
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        zip.file(`attachments/${full}`, buf);
         attachmentCount += 1;
-        attachmentBytes += buf.byteLength;
+        // Size comes from the listing, so we still report real byte counts
+        // without ever reading the file.
+        attachmentBytes += Number(entry.metadata?.size ?? 0);
       }
     };
     await walk('');
 
-    // 6. Manifest
-    const takenAt = new Date().toISOString();
+    // 7. Manifest
     zip.file('manifest.json', JSON.stringify({
-      version: 1,
+      version: 2,
       taken_at: takenAt,
       trigger,
       table_counts: tableCounts,
       attachment_count: attachmentCount,
       attachment_bytes: attachmentBytes,
+      // v2: attachments live beside the zip in the backups bucket rather than
+      // inside it. restore-snapshot.ts reads this to find them.
+      attachments_bucket: BACKUP_BUCKET,
+      attachments_prefix: attachmentPrefix,
+      attachment_errors: copyFailures,
     }, null, 2));
 
-    // 7. Upload zip
+    // 8. Upload zip — now just table JSON + manifest, so it stays small
     const zipBuf = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
-    const storagePath = `voltara-${takenAt.replace(/[:.]/g, '-')}.zip`;
     const { error: upErr } = await supabase.storage
       .from(BACKUP_BUCKET)
       .upload(storagePath, zipBuf, { contentType: 'application/zip', upsert: false });
     if (upErr) throw new Error(`Upload zip: ${upErr.message}`);
 
-    // 8. Mark meta row complete
+    // 9. Mark meta row complete. A partial attachment copy is still a usable
+    //    database backup, so it completes — but the warning surfaces on the
+    //    Snapshots screen rather than passing silently.
     const duration = Date.now() - startedAt;
+    const warning = copyFailures.length
+      ? `${copyFailures.length} attachment(s) could not be copied: ${copyFailures.slice(0, 3).join('; ')}`
+      : null;
     await supabase.from('snapshot_meta').update({
       storage_path: storagePath,
-      bytes: zipBuf.byteLength,
+      bytes: zipBuf.byteLength + attachmentBytes,
       table_counts: tableCounts,
       status: 'completed',
+      error: warning,
       duration_ms: duration,
     }).eq('id', metaId);
 
-    // 9. Retention — keep only KEEP most recent COMPLETED snapshots
+    // 10. Retention — keep only KEEP most recent COMPLETED snapshots
     const { data: kept } = await supabase
       .from('snapshot_meta')
       .select('id, storage_path')
@@ -144,6 +203,9 @@ Deno.serve(async (req: Request) => {
     const toDelete = (kept ?? []).slice(KEEP);
     for (const old of toDelete) {
       await supabase.storage.from(BACKUP_BUCKET).remove([old.storage_path]);
+      // v2 snapshots also own a sibling attachments folder; v1 zips carried
+      // their attachments inside, so removeFolder is a no-op for those.
+      await removeFolder(supabase, old.storage_path.replace(/\.zip$/, '-attachments'));
       await supabase.from('snapshot_meta').delete().eq('id', old.id);
     }
 
@@ -151,20 +213,43 @@ Deno.serve(async (req: Request) => {
       ok: true,
       id: metaId,
       storage_path: storagePath,
-      bytes: zipBuf.byteLength,
+      bytes: zipBuf.byteLength + attachmentBytes,
+      zip_bytes: zipBuf.byteLength,
       tables: Object.keys(tableCounts).length,
       attachments: attachmentCount,
+      attachment_errors: copyFailures.length,
+      reaped_stale: reapedCount,
       pruned: toDelete.length,
       duration_ms: duration,
     });
   } catch (e) {
     const msg = (e as Error).message ?? 'Unknown error';
+    // Best-effort cleanup so a failed run doesn't leave orphaned copies behind.
+    await removeFolder(supabase, attachmentPrefix).catch(() => {});
     await supabase.from('snapshot_meta').update({
       status: 'failed', error: msg, duration_ms: Date.now() - startedAt,
     }).eq('id', metaId);
     return json({ error: msg }, 500);
   }
 });
+
+/** Recursively delete a prefix in the backups bucket. */
+async function removeFolder(
+  supabase: ReturnType<typeof createClient>,
+  prefix: string,
+): Promise<void> {
+  const { data: entries, error } = await supabase.storage
+    .from(BACKUP_BUCKET)
+    .list(prefix, { limit: 1000 });
+  if (error || !entries?.length) return;
+  const files: string[] = [];
+  for (const entry of entries) {
+    const full = `${prefix}/${entry.name}`;
+    if (entry.id === null) await removeFolder(supabase, full);
+    else files.push(full);
+  }
+  if (files.length) await supabase.storage.from(BACKUP_BUCKET).remove(files);
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
