@@ -106,7 +106,7 @@ src/
 
 1. **Feature isolation.** A feature may import only from `@/shared/*` and from another feature's `@/features/<name>` barrel. Never `@/features/customers/api` from outside `customers/`. If you need something from another feature, it must be in that feature's `index.ts` exports.
 2. **No supabase calls in screens.** Always go through a `useX` / `useCreateX` hook. Screens render data; hooks own data access; `api.ts` owns the network layer.
-3. **Adding a feature** = create `src/features/<name>/`, add one entry to `src/app/nav.ts` and `src/app/routes.ts`. No other shell changes.
+3. **Adding a feature** = create `src/features/<name>/`, add one entry to `src/app/nav.tsx` and `src/app/routes.tsx`. No other shell changes.
 4. **Adding a column** = migration first, regenerate types (`npm run gen:types`), update the feature's `types.ts` re-export, update modal/screen.
 5. **Canonical entities.** Customers, suppliers, and products live in their own features and are referenced by FK from every transactional table. Never re-key them in another modal — always use `CustomerPicker` / `SupplierPicker` / `ProductPicker`.
 6. **Snapshot, don't denormalise.** When a transactional row needs a price (e.g. invoice line items), snapshot it at write time as `unit_price_snapshot`. Don't store derivable fields like "customer total spend" — compute via SQL views.
@@ -137,7 +137,7 @@ When in doubt: open a sibling feature folder (`features/customers/`) as the cano
 
 | Task | Steps |
 |---|---|
-| Add a new screen "X" | `cp -r src/features/customers src/features/x` → rename, gut, rebuild → add migration `00NN_x.sql` → add to `app/nav.ts` + `app/routes.ts`. |
+| Add a new screen "X" | `cp -r src/features/customers src/features/x` → rename, gut, rebuild → add migration `00NN_x.sql` → add to `app/nav.tsx` + `app/routes.tsx`. |
 | Add a column to invoices | New migration → `npm run gen:types` → update `Invoice` re-export in `features/invoices/types.ts` → update modal + screen. |
 | "The customer in Sales should be the same one as in Invoices" | Both modals must use `CustomerPicker` from `@/features/customers`. If one is using a free-text input, fix it. |
 | Integrating the PDF project | Land it under `features/invoices/pdf/`. Follow the restyle rule. The `Print PDF` button in `InvoiceModal` is already wired to `renderInvoicePDF(invoice)`. |
@@ -158,27 +158,34 @@ When in doubt: open a sibling feature folder (`features/customers/`) as the cano
 
 ## 7. Current feature roster
 
+**`src/app/nav.tsx` is authoritative** — it is the only file that knows the full feature list. The roster below is orientation, not a source of truth; if the two disagree, believe `nav.tsx` and fix this list. Update both in the same commit as a new feature.
+
 ```
 src/features/
 ├── overview/          # KPIs and charts dashboard
-├── customers/         # canonical customers + CustomerPicker
-├── sales/             # quotations + proposals + pdf/
-├── sales-orders/      # scaffold (KPIs + empty state, no DB yet)
+├── todo/              # To-Do screen (tasks table)
+├── customers/         # canonical customers + CustomerPicker + CSV import
+├── sales/             # quotations + proposals + pdf/ + whatsapp/
+├── sales-orders/      # customer-PO record linked to Case Won quotes
 ├── sales-managers/    # canonical SalesManagerPicker
-├── invoices/          # invoices + pdf/, linked to Case Won quotes
+├── invoices/          # invoices + pdf/ + payments/, linked to Case Won quotes
 ├── purchase-orders/   # outgoing POs only + pdf/, multi-currency
-├── bills/             # COGS bills, multi-currency
-├── expenses/          # operating expenses
+├── bills/             # COGS bills, multi-currency, 1:1 to installations
+├── expenses/          # operating expenses, multi-currency
 ├── installations/     # installations + delivery-order pdf/
-├── products/          # canonical ProductPicker
+├── products/          # canonical ProductPicker + engagement stock
 ├── suppliers/         # Supplier / Vendor / Contractor tabs + SupplierCategoryPicker
 ├── form-designs/      # company profile + per-doc-type design
+├── email-designs/     # per-doc-type email envelope + Resend send pipeline
 ├── social/            # social media planner
+├── ai-blogger/        # competitor-aware drafting → Wix publish → Ahrefs SEO
 ├── seo/               # SEO monitor
+├── exports/           # monthly zip exports
+├── snapshots/         # DB + attachments backup history
 └── supabase-health/   # internal diagnostics
 ```
 
-Sidebar groups in `src/app/nav.ts`: **Operations**, **Accounting** (Purchase Orders, Invoices, Bills, Expenses), **Sales & CRM** (Customers, Sales, Sales Orders, Sales Managers), **Inventory**, **Marketing**, **Settings**.
+Sidebar groups in `src/app/nav.tsx`: **Operations**, **Accounting** (Purchase Orders, Invoices, Bills, Expenses), **Sales & CRM** (Customers, Sales, Sales Orders, Sales Managers), **Inventory**, **Marketing**, **Settings**.
 
 ---
 
@@ -273,7 +280,7 @@ Always pass `modalRecord` to the modal — never the captured snapshot from `set
 
 ## 13. Attachments via Supabase Storage
 
-- Bucket: `attachments` (public, permissive RLS — matches the rest of the app).
+- Bucket: `attachments` (public **reads**, authenticated writes — see §21 for why reads must stay open).
 - Path convention: `{table}/{record_id}/{uuid}-{filename}`.
 - **Never** store base64 `data_url` blobs in JSONB. The `Attachment` shape is `{ name, mime, storage_path, size, uploaded_at }`.
 - Use the shared `AttachmentsField` from `@/shared/components/AttachmentsField` — it owns drag-drop, image resizing, 5-file/2 MB limits, view-via-publicUrl, and confirm-remove. Pass `storagePath` (folder prefix).
@@ -327,28 +334,29 @@ The PDF renders custom rows by using `description` as the line label and skippin
 
 ---
 
-## 19. Recently added migrations (additive only — never edit prior ones)
+## 19. Migrations (additive only — never edit prior ones)
 
-```
-0010_installations_quote_link.sql
-0011_sales_manager_avatar.sql
-0012_quote_won_at.sql
-0013_expenses.sql
-0014_expense_entity_and_periods.sql
-0015_quote_last_followup.sql
-0016_quote_customer_po_attachments.sql
-0017_bills.sql
-0018_invoices_quote_link.sql
-0019_quote_remarks.sql
-0020_quote_proposal_attachments.sql
-0021_supplier_kind.sql
-0022_supplier_categories.sql
-0023_supplier_categories_per_kind.sql        # composite PK (name, kind)
-0024_po_currency.sql
-0025_bill_currency.sql
+**Never keep a list of migrations in this file.** It used to enumerate them, drifted thirty files behind, and then actively caused harm: it instructed sessions to number the next migration by following a list that stopped at `0025`, which collides with five months of existing files. `supabase/migrations/` is the source of truth.
+
+**Find the next number:**
+
+```bash
+ls supabase/migrations/ | tail -1     # highest existing; next is +1
 ```
 
-When adding the next migration, name it `00NN_<topic>.sql` and apply via Supabase MCP `apply_migration`. Then update the corresponding stub in `src/shared/lib/database.types.ts` (the file is hand-maintained, not generated against the live DB by default).
+**Adding one:**
+
+1. Write `supabase/migrations/00NN_<topic>.sql`.
+2. Apply via Supabase MCP `apply_migration`, passing `00NN_<topic>` as the name so the remote ledger matches the filename.
+3. **Write the file to disk even when you applied it through MCP.** `apply_migration` changes the database only — a migration that exists remotely but not in the repo cannot be replayed into a fresh project, and nothing warns you.
+4. Update the matching stub in `src/shared/lib/database.types.ts` (hand-maintained, not generated against the live DB by default).
+
+**Check they agree** — these two numbers must match:
+
+```bash
+ls supabase/migrations/*.sql | wc -l          # repo
+# vs Supabase MCP list_migrations             # database
+```
 
 ---
 
@@ -362,3 +370,53 @@ When adding the next migration, name it `00NN_<topic>.sql` and apply via Supabas
 - ❌ Pass `SupplierWithStats` (or any view-augmented row) directly into a modal patch — Supabase will reject the update.
 - ❌ Read `quotes.remarks` from any rendered PDF. It's internal-only.
 - ❌ Capture-at-click modal data. Always derive `modalRecord` from the live query (§12).
+- ❌ Grant an RLS policy to `public` / `anon`. See §21 — the anon key is in the client bundle, so that is equivalent to publishing the table.
+- ❌ Lock down `SELECT` on the `attachments` bucket. Outgoing PDFs depend on public reads (§21).
+- ❌ Maintain a list of migrations in this file (§19).
+- ❌ Apply a migration via MCP without also committing the `.sql` file (§19).
+
+---
+
+## 21. Authentication & access control (locked)
+
+Added 2026-08-15, replacing a frontend-only password gate that protected nothing.
+
+| Concern | Rule |
+|---|---|
+| Gate | `src/app/AuthGate.tsx` — real Supabase session. Provides `useAuth()` → `{ session, email, signOut }`. There is no hardcoded password anywhere. |
+| Account settings | `src/app/ProfileModal.tsx`, opened from the sidebar profile button. Password change **re-authenticates first** — a valid session alone must never be enough to change the password. |
+| Access model | **Flat.** Any authenticated user sees everything. No per-row ownership, no roles. |
+| Table policies | Every table: one `ALL` policy, `TO authenticated`, `USING (true)`. **Never `TO public`.** |
+| Accounts | Invite-only. `public.auth_allowed_emails` + a `BEFORE INSERT` trigger on `auth.users` (migration `0056`) rejects any address not listed. Add the email there *before* creating the user. |
+| Signup toggle | GoTrue's `disable_signup` is **project config, not database** — not reachable via MCP or migrations. The trigger above is the durable backstop; the dashboard toggle is the supported control. Keep both. |
+
+**Storage policies are deliberately asymmetric:**
+
+- `attachments` **SELECT stays public.** Resend and Respond.io fetch quote/invoice/DO PDFs via `getPublicUrl()` to attach them, and customers hold links to documents already sent. Locking reads breaks document delivery.
+- `attachments` INSERT / UPDATE / DELETE are `authenticated` — that was the real exposure.
+- `backups` is `authenticated`-read, no client write path.
+
+Because every query goes through the one shared client (§3.2), the session JWT is attached automatically — features need no auth code. If a screen suddenly returns empty arrays, check the session before debugging the query.
+
+---
+
+## 22. Edge functions
+
+Eight functions in `supabase/functions/`, all deployed. Each has its own README with the secrets it needs — **secrets are per-function in Supabase**, so the same key must be set separately on each function that uses it.
+
+| Function | Purpose | External | `verify_jwt` |
+|---|---|---|---|
+| `ai-blogger-draft` | Drafts a post from competitor/keyword context | Anthropic | yes |
+| `ai-blogger-publish` | Publishes a draft to Wix Blog v3 | Wix | yes |
+| `ai-blogger-seo-snapshot` | Ahrefs metrics for a published URL | Ahrefs | yes |
+| `ai-blogger-tick` | Publishes scheduled drafts, refreshes SEO | — | **no** |
+| `parse-invoice` | Auto-fills the Bills modal from a dropped file | Anthropic | yes |
+| `send-email` | Quote / invoice / PO / DO with PDF attached | Resend | yes |
+| `send-whatsapp-quote` | Quotation send (CORS workaround) | Respond.io | yes |
+| `snapshot-db` | Nightly DB + attachments backup | — | **no** |
+
+The two `verify_jwt: false` functions authenticate with their own shared secret — **re-deploying either one with the default `verify_jwt: true` breaks it**, because `pg_cron` calls them without a user JWT.
+
+**Snapshots (v2 format).** `snapshot-db` writes a small zip of `manifest.json` + `tables/*.json`, and copies attachments **server-side** to a sibling `voltara-<ts>-attachments/` prefix in the `backups` bucket. Attachment bytes must never pass through the function — buffering them is what exhausted the runtime memory and killed 34 consecutive nightly runs. `scripts/restore-snapshot.ts` reads both v2 and the older v1 (attachments inside the zip).
+
+Only one cron job exists (`voltara-nightly-snapshot`, 18:00 UTC). `ai-blogger-tick` is **not** scheduled despite its README describing a periodic orchestrator.
