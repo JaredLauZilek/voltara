@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { C } from '@/shared/tokens';
+import { ReorderHandle } from '@/shared/components/ReorderHandle';
+import { moveInArray } from '@/shared/lib/array';
 import { Modal } from '@/shared/components/Modal';
 import { CustomerPicker, useCustomers } from '@/features/customers';
 import { ProductPicker, useProducts } from '@/features/products';
@@ -34,22 +36,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: 13,
   outline: 'none',
 };
-/** Half-height chevron button for the line-item reorder handle. */
-const reorderBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  width: 22,
-  height: 13,
-  padding: 0,
-  borderRadius: 6,
-  border: `1px solid ${C.border}`,
-  background: 'transparent',
-  color: disabled ? C.border : C.slate,
-  fontSize: 7,
-  lineHeight: 1,
-  cursor: disabled ? 'default' : 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-});
 const labelStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
@@ -113,13 +99,7 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
    * ends up reading, not just an editing convenience.
    */
   const moveItem = (from: number, to: number) =>
-    setForm((f) => {
-      if (to < 0 || to >= f.line_items.length) return f;
-      const next = [...f.line_items];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { ...f, line_items: next };
-    });
+    setForm((f) => ({ ...f, line_items: moveInArray(f.line_items, from, to) }));
   const onProductChange = (i: number, productId: string) => {
     const p = products.find((x) => x.id === productId);
     updateItem(i, {
@@ -324,31 +304,8 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
           return (
             <div key={i} style={{ marginBottom: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
-                {/* Reorder handle. Sits left of the row, where a drag handle
-                    would be, so the row still reads picker → qty → price. */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <button
-                    type="button"
-                    onClick={() => moveItem(i, i - 1)}
-                    disabled={i === 0}
-                    title="Move item up"
-                    aria-label={`Move item ${i + 1} up`}
-                    style={reorderBtnStyle(i === 0)}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveItem(i, i + 1)}
-                    disabled={i === form.line_items.length - 1}
-                    title="Move item down"
-                    aria-label={`Move item ${i + 1} down`}
-                    style={reorderBtnStyle(i === form.line_items.length - 1)}
-                  >
-                    ▼
-                  </button>
-                </div>
-                <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
+                <ReorderHandle index={i} count={form.line_items.length} onMove={moveItem} />
+                                <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
                 <input
                   type="number"
                   min="0"

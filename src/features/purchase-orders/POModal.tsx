@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { C } from '@/shared/tokens';
+import { ReorderHandle } from '@/shared/components/ReorderHandle';
+import { moveInArray } from '@/shared/lib/array';
 import { Modal } from '@/shared/components/Modal';
 import { SupplierPicker } from '@/features/suppliers';
 import { ProductPicker, useProducts } from '@/features/products';
@@ -80,6 +82,13 @@ export function POModal({ po, isSaving = false, onClose, onSave, onDelete }: Pro
   };
   const removeItem = (i: number) =>
     setForm((f) => ({ ...f, line_items: f.line_items.filter((_, idx) => idx !== i) }));
+
+  /**
+   * Move a line up or down. Order is the document's order — line_items renders
+   * in array order on the PDF — so this is what the recipient reads.
+   */
+  const moveItem = (from: number, to: number) =>
+    setForm((f) => ({ ...f, line_items: moveInArray(f.line_items, from, to) }));
   const onProductChange = (i: number, productId: string) => {
     const p = products.find((x) => x.id === productId);
     updateItem(i, { product_id: productId, unit_price_snapshot: p?.cost ?? 0 });
@@ -141,7 +150,8 @@ export function POModal({ po, isSaving = false, onClose, onSave, onDelete }: Pro
           const isCustom = !item.product_id;
           return (
           <div key={i} style={{ marginBottom: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+            <ReorderHandle index={i} count={form.line_items.length} onMove={moveItem} />
             {isCustom ? (
               <input
                 value={item.description ?? ''}

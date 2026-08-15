@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { C } from '@/shared/tokens';
+import { ReorderHandle } from '@/shared/components/ReorderHandle';
+import { moveInArray } from '@/shared/lib/array';
 import { Modal } from '@/shared/components/Modal';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { CustomerPicker, useCustomers } from '@/features/customers';
@@ -146,6 +148,13 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
   };
   const removeItem = (i: number) =>
     setForm((f) => ({ ...f, line_items: f.line_items.filter((_, idx) => idx !== i) }));
+
+  /**
+   * Move a line up or down. Order is the document's order — line_items renders
+   * in array order on the PDF — so this is what the recipient reads.
+   */
+  const moveItem = (from: number, to: number) =>
+    setForm((f) => ({ ...f, line_items: moveInArray(f.line_items, from, to) }));
   const updateItem = (i: number, patch: Partial<LineItem>) =>
     setForm((f) => ({ ...f, line_items: f.line_items.map((li, idx) => (idx === i ? { ...li, ...patch } : li)) }));
 
@@ -283,8 +292,8 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
 
       <div>
         <label style={{ ...labelStyle, marginBottom: 10 }}>Line Items</label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, marginBottom: 6 }}>
-          {['Product', 'Qty', 'Unit Price', 'Subtotal', ''].map((h, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, marginBottom: 6 }}>
+          {['', 'Product', 'Qty', 'Unit Price', 'Subtotal', ''].map((h, i) => (
             <div
               key={i}
               style={{ fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em' }}
@@ -298,7 +307,8 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           const itemProduct = products.find((x) => x.id === item.product_id);
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 70px 90px 90px 32px', gap: 8, alignItems: 'center' }}>
+                <ReorderHandle index={i} count={form.line_items.length} onMove={moveItem} />
                 <ProductPicker value={item.product_id || null} onChange={(id) => onProductChange(i, id)} />
                 <input
                   type="number"
