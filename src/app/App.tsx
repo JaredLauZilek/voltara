@@ -7,6 +7,8 @@ import { NAV_SECTIONS, SCREEN_TITLES, type ScreenId } from './nav';
 import { ROUTES } from './routes';
 import { useUnacknowledgedAlertsCount } from '@/features/seo';
 import { useCompanyProfile } from '@/features/form-designs';
+import { useAuth } from './AuthGate';
+import { ProfileModal } from './ProfileModal';
 
 const COLLAPSED_KEY = 'voltara.nav.collapsed';
 
@@ -17,6 +19,8 @@ export function App() {
   const { data: companyProfile } = useCompanyProfile();
   const customLogo = companyProfile?.logo_data_url ?? null;
   const { isCompact } = useViewport();
+  const { email, signOut } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
   // Drawer for iPad / phone / Galaxy Fold. Always-open on desktop.
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -174,7 +178,28 @@ export function App() {
           })}
         </nav>
 
-        <div style={{ borderTop: `1px solid ${C.divider}`, padding: '14px 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          title="Account settings"
+          style={{
+            borderTop: `1px solid ${C.divider}`,
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderBottom: 'none',
+            background: 'transparent',
+            width: '100%',
+            padding: '14px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            cursor: 'pointer',
+            fontFamily: 'Figtree',
+            textAlign: 'left',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.hoverRow; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
           <div
             style={{
               width: 34,
@@ -190,15 +215,28 @@ export function App() {
               flexShrink: 0,
             }}
           >
-            A
+            {(email || '?').charAt(0).toUpperCase()}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Admin User
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              title={email}
+              style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {email || 'Signed in'}
             </div>
-            <div style={{ fontSize: 11, color: C.slate }}>Voltara Ops</div>
+            <div
+              style={{
+                fontFamily: 'Figtree',
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.slate,
+                textAlign: 'left',
+              }}
+            >
+              Account settings
+            </div>
           </div>
-        </div>
+        </button>
       </aside>
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -254,6 +292,14 @@ export function App() {
 
         <div data-voltara-main style={{ flex: 1, overflowY: 'auto', padding: 28 }}>{ROUTES[screen]}</div>
       </main>
+
+      {profileOpen && (
+        <ProfileModal
+          email={email}
+          onClose={() => setProfileOpen(false)}
+          onSignOut={() => { void signOut(); }}
+        />
+      )}
     </div>
   );
 }
