@@ -90,7 +90,7 @@ export function SEOMonitorScreen() {
 }
 
 function IntegrationDot({ label, status }: { label: string; status: 'not_connected' | 'connected' | 'error' }) {
-  const color = status === 'connected' ? '#22a14b' : status === 'error' ? '#C0321A' : C.slate;
+  const color = status === 'connected' ? C.success : status === 'error' ? C.error : C.slate;
   return (
     <span
       style={{

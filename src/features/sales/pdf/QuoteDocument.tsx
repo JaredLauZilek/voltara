@@ -3,6 +3,7 @@ import type { Quote } from '../types';
 import type { Customer } from '@/features/customers';
 import type { Product } from '@/features/products';
 import type { SalesManager } from '@/features/sales-managers';
+import { C } from '@/shared/tokens';
 
 interface Props {
   quote: Quote;
@@ -50,15 +51,15 @@ export function QuoteDocument({ quote, customer, products, salesManager, profile
   const total = afterDiscount + taxAmt;
 
   const docTitle = quote.type === 'Proposal' ? 'PROPOSAL' : 'QUOTATION';
-  const SLATE = '#767B77';
-  const DIVIDER = '#F3F3F3';
+  const SLATE = C.slate;
+  const DIVIDER = C.divider;
 
   const cv = design.column_visibility;
 
   return (
     <div
       id={printId}
-      style={{ background: '#fff', padding: 36, fontFamily: fontStack, fontSize: 11, color: '#1a1a1a', minHeight: 900 }}
+      style={{ background: '#fff', padding: 36, fontFamily: fontStack, fontSize: 11, color: C.ink, minHeight: 900 }}
     >
       {/* PAGE HEADER — repeats on every page in print via position: fixed */}
       <div className="voltara-page-header">
@@ -110,7 +111,7 @@ export function QuoteDocument({ quote, customer, products, salesManager, profile
 
         {/* Header note */}
         {design.header_note && (
-          <div style={{ marginTop: 10, padding: '8px 12px', background: '#F9F9F9', borderRadius: 6, fontSize: 10, lineHeight: 1.4 }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', background: C.seasalt, borderRadius: 6, fontSize: 10, lineHeight: 1.4 }}>
             {design.header_note}
           </div>
         )}
@@ -158,7 +159,7 @@ export function QuoteDocument({ quote, customer, products, salesManager, profile
       <div className="voltara-doc-tail">
         {salesManager && (
           <div style={{ marginTop: 10, fontSize: 10, color: SLATE }}>
-            Prepared by: <span style={{ fontWeight: 700, color: '#1a1a1a' }}>{salesManager.name}</span>
+            Prepared by: <span style={{ fontWeight: 700, color: C.ink }}>{salesManager.name}</span>
             {salesManager.email && <span> · {salesManager.email}</span>}
             {salesManager.phone && <span> · {salesManager.phone}</span>}
           </div>
@@ -218,7 +219,7 @@ const td: React.CSSProperties = {
 function TotalsRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 10 }}>
-      <span style={{ color: '#767B77' }}>{label}</span>
+      <span style={{ color: C.slate }}>{label}</span>
       <span style={{ fontWeight: 600 }}>{value}</span>
     </div>
   );
@@ -228,7 +229,7 @@ function SigBox({ label }: { label: string }) {
   return (
     <div>
       <div style={{ height: 50, borderBottom: '1px solid #767B77' }} />
-      <div style={{ marginTop: 4, fontSize: 9, color: '#767B77', textAlign: 'center' }}>{label}</div>
+      <div style={{ marginTop: 4, fontSize: 9, color: C.slate, textAlign: 'center' }}>{label}</div>
     </div>
   );
 }

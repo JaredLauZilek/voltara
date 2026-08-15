@@ -18,11 +18,19 @@ export const C = {
   error:     '#C0321A',
   errorBg:   '#FDEAEA',
   errorBgSoft: '#FFAAAA',
+  success:   '#22A14B',
   info:      '#1A62C0',
   infoBg:    '#E3F0FF',
   warning:   '#B07D00',
   warningBg: '#FFF8E1',
   ink:       '#1a1a1a',
+  // Muted body text inside generated PDFs — softer than `ink` so dense
+  // line-item tables don't read as heavily as on screen.
+  inkMuted:  '#444444',
+  // Chrome behind an embedded PDF preview — matches the browser's own
+  // viewer surround so the document appears to float rather than sit on a
+  // mismatched panel.
+  viewerBg:  '#525659',
 } as const;
 
 export const RADIUS = {

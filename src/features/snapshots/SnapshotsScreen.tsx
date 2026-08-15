@@ -21,8 +21,8 @@ const fmtDate = (iso: string): string =>
 
 const STATUS_PILL: Record<SnapshotMeta['status'], { bg: string; color: string; label: string }> = {
   completed: { bg: C.honeydew,  color: C.green,    label: 'Completed' },
-  pending:   { bg: '#FFF8E1',   color: '#B07D00',  label: 'Running…'  },
-  failed:    { bg: '#FDEAEA',   color: '#C0321A',  label: 'Failed'    },
+  pending:   { bg: C.warningBg,   color: C.warning,  label: 'Running…'  },
+  failed:    { bg: C.errorBg,   color: C.error,  label: 'Failed'    },
 };
 
 export function SnapshotsScreen() {
@@ -90,7 +90,7 @@ export function SnapshotsScreen() {
         </div>
 
         {error && (
-          <div style={{ marginBottom: 14, padding: '10px 12px', background: '#FDEAEA', color: '#C0321A', fontSize: 12, fontWeight: 600, borderRadius: 8 }}>
+          <div style={{ marginBottom: 14, padding: '10px 12px', background: C.errorBg, color: C.error, fontSize: 12, fontWeight: 600, borderRadius: 8 }}>
             {error}
           </div>
         )}
@@ -183,7 +183,7 @@ export function SnapshotsScreen() {
                               ))}
                           </div>
                           {s.error && (
-                            <div style={{ marginTop: 10, padding: '8px 10px', background: '#FDEAEA', color: '#C0321A', fontSize: 12, fontWeight: 600, borderRadius: 6 }}>
+                            <div style={{ marginTop: 10, padding: '8px 10px', background: C.errorBg, color: C.error, fontSize: 12, fontWeight: 600, borderRadius: 6 }}>
                               {s.error}
                             </div>
                           )}

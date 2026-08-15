@@ -176,7 +176,7 @@ export function SalesOrderModal({ so, isSaving = false, onClose, onSave, onDelet
           disabled={!isNew}
         />
         {isNew && !form.quote_id && (
-          <div style={{ fontSize: 11, color: '#C0321A', marginTop: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: C.error, marginTop: 6, fontWeight: 600 }}>
             A sales order must be tied to a Case Won quote.
           </div>
         )}
@@ -307,7 +307,7 @@ export function SalesOrderModal({ so, isSaving = false, onClose, onSave, onDelet
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: '#C0321A',
+                        color: C.error,
                         cursor: 'pointer',
                         fontSize: 16,
                         padding: 4,
@@ -401,12 +401,12 @@ export function SalesOrderModal({ so, isSaving = false, onClose, onSave, onDelet
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
                 Permanent — cannot be undone.
               </span>
               <button
                 onClick={() => onDelete(so!.id)}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -420,7 +420,7 @@ export function SalesOrderModal({ so, isSaving = false, onClose, onSave, onDelet
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

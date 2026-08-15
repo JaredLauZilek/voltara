@@ -100,7 +100,7 @@ export function InvoicePrintModal({ invoice, onClose, variant = 'invoice' }: Pro
       </div>
 
       {/* PDF preview */}
-      <div style={{ flex: 1, background: '#525659', overflow: 'hidden' }}>
+      <div style={{ flex: 1, background: C.viewerBg, overflow: 'hidden' }}>
         {!ready || !docElement ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.white, fontSize: 14 }}>
             Loading document design…

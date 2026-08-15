@@ -266,7 +266,7 @@ export function BillModal({ bill, onClose, onSave, onDelete, usedInstallationIds
 
       {/* Supplier */}
       <div>
-        <label style={labelStyle}>Supplier / Vendor / Contractor <span style={{ color: '#C0321A' }}>*</span></label>
+        <label style={labelStyle}>Supplier / Vendor / Contractor <span style={{ color: C.error }}>*</span></label>
         <SupplierPicker
           value={form.supplier_id}
           onChange={handleSupplierChange}
@@ -278,7 +278,7 @@ export function BillModal({ bill, onClose, onSave, onDelete, usedInstallationIds
       {/* Amount + Currency */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 12 }}>
         <div>
-          <label style={labelStyle}>Amount ({currency}) <span style={{ color: '#C0321A' }}>*</span></label>
+          <label style={labelStyle}>Amount ({currency}) <span style={{ color: C.error }}>*</span></label>
           <input
             type="number"
             min="0"
@@ -385,12 +385,12 @@ export function BillModal({ bill, onClose, onSave, onDelete, usedInstallationIds
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
-              <button onClick={() => onDelete(bill.id, bill.attachments)} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#fff', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Confirm Delete</button>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <button onClick={() => onDelete(bill.id, bill.attachments)} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: '#fff', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Confirm Delete</button>
               <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.slate, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
             </>
           ) : (
-            <button onClick={() => setConfirmDelete(true)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+            <button onClick={() => setConfirmDelete(true)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
           )
         )}
         <button onClick={onClose} style={{ marginLeft: 'auto', padding: '10px 20px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.slate, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>

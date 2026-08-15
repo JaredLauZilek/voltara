@@ -94,12 +94,12 @@ function AvatarUploader({ value, name, onChange }: { value: string | null; name:
         {value && (
           <button
             onClick={(e) => { e.stopPropagation(); onChange(null); setError(null); }}
-            style={{ marginTop: 4, border: 'none', background: 'transparent', color: '#C0321A', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Figtree', padding: 0 }}
+            style={{ marginTop: 4, border: 'none', background: 'transparent', color: C.error, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Figtree', padding: 0 }}
           >
             Remove photo
           </button>
         )}
-        {error && <div style={{ marginTop: 4, fontSize: 11, color: '#C0321A', fontWeight: 600 }}>{error}</div>}
+        {error && <div style={{ marginTop: 4, fontSize: 11, color: C.error, fontWeight: 600 }}>{error}</div>}
       </div>
       <input
         ref={fileInput}
@@ -223,12 +223,12 @@ export function SalesManagerModal({ manager, onClose, onSave, onDelete }: Props)
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
                 This will unlink all associated quotes. Cannot be undone.
               </span>
               <button
                 onClick={() => onDelete(manager.id)}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -242,7 +242,7 @@ export function SalesManagerModal({ manager, onClose, onSave, onDelete }: Props)
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

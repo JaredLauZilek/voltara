@@ -100,7 +100,7 @@ export function EmailDesignPanel({ docType, draft, onChange }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input
             type="color"
-            value={draft.accent_color || '#1B512D'}
+            value={draft.accent_color || C.green}
             onChange={(e) => onChange({ accent_color: e.target.value })}
             style={{ width: 44, height: 32, border: `1px solid ${C.border}`, borderRadius: 8, padding: 0, cursor: 'pointer' }}
           />

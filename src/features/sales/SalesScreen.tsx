@@ -237,7 +237,7 @@ export function SalesScreen() {
                 const customer = customerById.get(q.customer_id);
                 const idleDays = idleDaysOf(q);
                 const isStale = idleDays !== null && idleDays > 7;
-                const restingBg = isStale ? '#FDEAEA' : 'transparent';
+                const restingBg = isStale ? C.errorBg : 'transparent';
                 return (
                   <tr
                     key={q.id}
@@ -528,15 +528,15 @@ export function SalesScreen() {
         const isDeducting = pendingChange.newStatus === 'Case Won';
         const isRestoring = pendingChange.quote.status === 'Case Won' && !isDeducting;
         const showItems = isDeducting || isRestoring;
-        const accentBg  = isDeducting ? C.honeydew : '#FFF8E1';
-        const accentText = isDeducting ? C.green : '#B07D00';
+        const accentBg  = isDeducting ? C.honeydew : C.warningBg;
+        const accentText = isDeducting ? C.green : C.warning;
         const accentLabel = isDeducting
           ? 'The following items will be deducted from inventory:'
           : 'The following items will be restored to inventory:';
         return (
           <Modal title="Confirm status change" onClose={() => setPendingChange(null)}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ fontSize: 14, color: '#1a1a1a', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.5 }}>
                 Change{' '}
                 <span style={{ fontWeight: 700, color: C.green }}>{pendingChange.quote.id}</span>
                 {' '}from{' '}
@@ -566,7 +566,7 @@ export function SalesScreen() {
                           const product = productById.get(li.product_id);
                           return (
                             <tr key={i} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                              <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>
+                              <td style={{ padding: '9px 12px', fontWeight: 600, color: C.ink }}>
                                 {product?.name ?? li.product_id}
                               </td>
                               <td style={{ padding: '9px 12px', color: C.slate, fontSize: 12 }}>
@@ -612,7 +612,7 @@ function formatIdleDays(sinceISO: string): React.ReactNode {
   if (days <= 0) return 'Today';
   const isStale = days > 7;
   return (
-    <span style={{ color: isStale ? '#C0321A' : C.slate, fontWeight: isStale ? 700 : 500 }}>
+    <span style={{ color: isStale ? C.error : C.slate, fontWeight: isStale ? 700 : 500 }}>
       {days} {days === 1 ? 'day' : 'days'}
     </span>
   );

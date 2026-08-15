@@ -114,7 +114,7 @@ export function EmailSendModal({
       <div style={{ background: C.seasalt, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>{recipient.name}</div>
         <div style={{ fontSize: 11, color: C.slate }}>
-          {recipient.email ?? <span style={{ color: '#C0321A', fontWeight: 600 }}>No email on file — enter one below</span>}
+          {recipient.email ?? <span style={{ color: C.error, fontWeight: 600 }}>No email on file — enter one below</span>}
         </div>
       </div>
 
@@ -201,7 +201,7 @@ export function EmailSendModal({
               width: '100%',
               height: 540,
               borderRadius: 12,
-              background: '#525659',
+              background: C.viewerBg,
               overflow: 'hidden',
             }}>
               <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none' }}>
@@ -218,7 +218,7 @@ export function EmailSendModal({
       </div>
 
       {error && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '10px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8 }}>
           {error}
         </div>
       )}

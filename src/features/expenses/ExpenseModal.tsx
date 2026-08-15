@@ -279,7 +279,7 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
             onChange={(e) => setRecurringToggle(e.target.checked)}
             style={{ width: 16, height: 16, accentColor: C.green, cursor: 'pointer' }}
           />
-          <span style={{ fontSize: 13, fontWeight: 700, color: isRecurring ? C.green : '#1a1a1a' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isRecurring ? C.green : C.ink }}>
             This is a recurring expense
           </span>
         </label>
@@ -510,10 +510,10 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>Permanent — cannot be undone.</span>
               <button
                 onClick={() => onDelete(expense.id, expense.attachments ?? [])}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -527,7 +527,7 @@ export function ExpenseModal({ expense, onClose, onSave, onDelete }: Props) {
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>
@@ -657,12 +657,12 @@ function PeriodEditor({
         </div>
         {confirmRemove ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: '#C0321A', fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: C.error, fontWeight: 600 }}>
               {hasData ? 'Remove this period and its attachments?' : 'Remove this period?'}
             </span>
             <button
               onClick={onRemove}
-              style={{ padding: '4px 10px', borderRadius: 8, border: 'none', background: '#C0321A', color: '#FFFFFF', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
+              style={{ padding: '4px 10px', borderRadius: 8, border: 'none', background: C.error, color: C.white, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
             >
               Confirm
             </button>
@@ -676,7 +676,7 @@ function PeriodEditor({
         ) : (
           <button
             onClick={() => setConfirmRemove(true)}
-            style={{ border: 'none', background: 'transparent', color: '#C0321A', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
+            style={{ border: 'none', background: 'transparent', color: C.error, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
           >
             Remove
           </button>

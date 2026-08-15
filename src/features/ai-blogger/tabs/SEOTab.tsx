@@ -30,7 +30,7 @@ export function SEOTab() {
               style={{
                 width: '100%', padding: '10px 14px', border: 'none',
                 background: selectedId === d.id ? C.honeydew : 'transparent',
-                color: selectedId === d.id ? C.green : '#1a1a1a',
+                color: selectedId === d.id ? C.green : C.ink,
                 textAlign: 'left', cursor: 'pointer', fontFamily: 'Figtree',
                 fontSize: 12, fontWeight: 600,
                 borderBottom: `1px solid ${C.divider}`,
@@ -77,7 +77,7 @@ function SnapshotsView({
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>{draft?.title ?? '—'}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{draft?.title ?? '—'}</div>
           {draft?.wix_post_url && (
             <a href={draft.wix_post_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.green }}>
               ↗ {draft.wix_post_url}
@@ -94,7 +94,7 @@ function SnapshotsView({
       </div>
 
       {error && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '10px 12px', background: '#FDEAEA', borderRadius: 8, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8, marginBottom: 12 }}>
           {error.message}
         </div>
       )}
@@ -110,7 +110,7 @@ function SnapshotsView({
               <div style={{ fontSize: 11, color: C.slate, marginBottom: 4 }}>
                 {new Date(s.fetched_at).toLocaleString('en-MY', { dateStyle: 'medium', timeStyle: 'short' })}
               </div>
-              <pre style={{ margin: 0, fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#1a1a1a' }}>
+              <pre style={{ margin: 0, fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: C.ink }}>
                 {JSON.stringify(s.metrics, null, 2)}
               </pre>
             </div>

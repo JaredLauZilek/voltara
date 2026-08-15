@@ -74,13 +74,13 @@ const rowStyle: React.CSSProperties = {
 function ProgressBar({ used, limit, color = C.green }: { used: number; limit: number; color?: string }) {
   const pct = Math.min(100, (used / limit) * 100);
   const warn = pct > 80;
-  const barColor = warn ? '#C0321A' : color;
+  const barColor = warn ? C.error : color;
   return (
     <div style={{ marginTop: 6 }}>
       <div style={{ height: 6, borderRadius: 99, background: C.divider, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 99, transition: 'width 400ms' }} />
       </div>
-      <div style={{ marginTop: 4, fontSize: 11, color: warn ? '#C0321A' : C.slate, fontWeight: warn ? 700 : 500 }}>
+      <div style={{ marginTop: 4, fontSize: 11, color: warn ? C.error : C.slate, fontWeight: warn ? 700 : 500 }}>
         {fmtBytes(used)} used · {fmtBytes(limit)} limit · {pct.toFixed(1)}%
       </div>
     </div>
@@ -137,14 +137,14 @@ export function SupabaseHealthScreen() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <div style={rowStyle}>
               <span style={{ color: C.slate, fontWeight: 600 }}>Project status</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: health.data?.ok ? C.green : '#C0321A' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: health.data?.ok ? C.green : '#C0321A', display: 'inline-block' }} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: health.data?.ok ? C.green : C.error }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: health.data?.ok ? C.green : C.error, display: 'inline-block' }} />
                 {health.data?.ok ? 'Healthy' : 'Unreachable'}
               </span>
             </div>
             <div style={{ ...rowStyle, borderBottom: 'none' }}>
               <span style={{ color: C.slate, fontWeight: 600 }}>API latency</span>
-              <span style={{ fontWeight: 700, color: health.data?.latencyMs && health.data.latencyMs < 200 ? C.green : '#B07D00' }}>
+              <span style={{ fontWeight: 700, color: health.data?.latencyMs && health.data.latencyMs < 200 ? C.green : C.warning }}>
                 {health.data?.latencyMs && health.data.latencyMs >= 0 ? `${health.data.latencyMs} ms` : '—'}
               </span>
             </div>
@@ -158,7 +158,7 @@ export function SupabaseHealthScreen() {
         {db.isLoading ? (
           <div style={{ fontSize: 13, color: C.slate }}>Fetching database stats…</div>
         ) : db.error ? (
-          <div style={{ fontSize: 13, color: '#C0321A' }}>Failed to load database stats.</div>
+          <div style={{ fontSize: 13, color: C.error }}>Failed to load database stats.</div>
         ) : (
           <>
             <div style={{ marginBottom: 20 }}>

@@ -22,8 +22,8 @@ export function TrendChip({ delta, invert = false, unit = '' }: Props) {
       style={{
         fontSize: 11,
         fontWeight: 700,
-        color: positive ? '#22a14b' : '#C0321A',
-        background: positive ? C.honeydew : '#FDEAEA',
+        color: positive ? C.success : C.error,
+        background: positive ? C.honeydew : C.errorBg,
         padding: '2px 8px',
         borderRadius: 99,
       }}

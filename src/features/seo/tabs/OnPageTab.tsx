@@ -56,7 +56,7 @@ export function OnPageTab() {
 }
 
 function IssueCard({ label, value, muted = false }: { label: string; value: number; muted?: boolean }) {
-  const color = muted ? C.slate : value > 0 ? '#C0321A' : C.green;
+  const color = muted ? C.slate : value > 0 ? C.error : C.green;
   return (
     <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, padding: '16px 20px' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
@@ -81,7 +81,7 @@ function IssueList({ title, pages }: { title: string; pages: string[] }) {
               padding: '10px 20px',
               borderBottom: `1px solid ${C.divider}`,
               fontSize: 13,
-              color: '#1a1a1a',
+              color: C.ink,
             }}
           >
             {u}

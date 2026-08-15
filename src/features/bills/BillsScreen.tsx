@@ -150,7 +150,7 @@ export function BillsScreen() {
                     {(b.currency ?? 'RM')} {b.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{b.bill_date}</td>
-                  <td style={{ padding: '13px 16px', color: isOverdue ? '#C0321A' : C.slate, fontWeight: isOverdue ? 700 : 400 }}>
+                  <td style={{ padding: '13px 16px', color: isOverdue ? C.error : C.slate, fontWeight: isOverdue ? 700 : 400 }}>
                     {b.due_date ?? '—'}
                   </td>
                   <td style={{ padding: '13px 16px', color: C.slate, fontSize: 12 }}>{b.reference ?? '—'}</td>

@@ -12,9 +12,12 @@ export function Sparkline({ data, color = C.green, height = 40 }: Props) {
   const range = max - min || 1;
   const w = 120;
   const h = height;
+  // A single-point series makes the divisor 0, and 0/0 is NaN — same failure
+  // mode as MiniBar had. One point draws at x=0.
+  const span = data.length - 1 || 1;
   const pts = data
     .map((v, i) => {
-      const x = (i / (data.length - 1)) * w;
+      const x = (i / span) * w;
       const y = h - ((v - min) / range) * (h - 4) - 2;
       return `${x},${y}`;
     })

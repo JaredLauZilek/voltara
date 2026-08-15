@@ -87,7 +87,7 @@ export function SetPicker({ onInsert }: Props) {
                       fontFamily: 'Figtree',
                     }}
                   >
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a' }}>{s.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{s.name}</span>
                     <span style={{ fontSize: 11, color: C.slate }}>
                       {s.line_items.length} item{s.line_items.length === 1 ? '' : 's'}
                       {s.description ? ` · ${s.description}` : ''}

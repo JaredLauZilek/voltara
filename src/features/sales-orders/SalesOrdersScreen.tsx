@@ -114,7 +114,7 @@ export function SalesOrdersScreen() {
                   <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{s.id}</td>
                   <td style={{ padding: '13px 16px', fontWeight: 600 }}>{customerName}</td>
                   <td style={{ padding: '13px 16px' }}>
-                    <div style={{ fontWeight: 600, color: '#1a1a1a' }}>{s.customer_po_ref}</div>
+                    <div style={{ fontWeight: 600, color: C.ink }}>{s.customer_po_ref}</div>
                     <div style={{ fontSize: 11, color: C.slate }}>{s.customer_po_date}</div>
                   </td>
                   <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>

@@ -152,7 +152,7 @@ export function EmailDesignsScreen() {
             >
               {t.label}
               {modified && (
-                <span style={{ background: '#FFF8E1', color: '#B07D00', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99 }}>
+                <span style={{ background: C.warningBg, color: C.warning, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99 }}>
                   Modified
                 </span>
               )}

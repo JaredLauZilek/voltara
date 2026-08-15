@@ -187,7 +187,7 @@ export function PeriodInvoicePrefillField({
             <span style={{ fontSize: 10, color: C.slate }}>{pendingFile?.name}</span>
           </div>
           <PeriodChips parsed={parsed} onRemove={removeField} currency={baselineCurrency} />
-          {error && <div style={{ fontSize: 11, color: '#C0321A', fontWeight: 600 }}>{error}</div>}
+          {error && <div style={{ fontSize: 11, color: C.error, fontWeight: 600 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
@@ -215,8 +215,8 @@ export function PeriodInvoicePrefillField({
       )}
 
       {stage === 'error' && (
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: '#FDEAEA', border: '1px solid #FDEAEA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#C0321A', fontWeight: 600 }}>{error}</span>
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: C.errorBg, border: '1px solid #FDEAEA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: C.error, fontWeight: 600 }}>{error}</span>
           <button
             type="button"
             onClick={() => { setStage('idle'); setError(null); }}
@@ -250,7 +250,7 @@ export function PeriodInvoicePrefillField({
               <button
                 type="button"
                 onClick={() => handleRemoveAttachment(att)}
-                style={{ border: 'none', background: 'transparent', color: '#C0321A', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
+                style={{ border: 'none', background: 'transparent', color: C.error, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Figtree' }}
               >
                 Remove
               </button>
@@ -326,8 +326,8 @@ function PeriodChips({
               padding: 0,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#FDEAEA';
-              e.currentTarget.style.color = '#C0321A';
+              e.currentTarget.style.background = C.errorBg;
+              e.currentTarget.style.color = C.error;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';

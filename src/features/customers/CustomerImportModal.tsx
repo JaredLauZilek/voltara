@@ -367,7 +367,7 @@ export function CustomerImportModal({ onClose }: Props) {
 
       {/* Result */}
       {done && (
-        <div style={{ background: importErrors.length === 0 ? C.honeydew : '#FFF8E1', borderRadius: 10, padding: '10px 14px', fontSize: 12, fontWeight: 600, color: importErrors.length === 0 ? C.green : '#B07D00' }}>
+        <div style={{ background: importErrors.length === 0 ? C.honeydew : C.warningBg, borderRadius: 10, padding: '10px 14px', fontSize: 12, fontWeight: 600, color: importErrors.length === 0 ? C.green : C.warning }}>
           Imported {imported} of {validRows.length} customers.
           {importErrors.length > 0 && (
             <ul style={{ margin: '6px 0 0 16px', padding: 0, fontWeight: 500 }}>

@@ -149,6 +149,6 @@ function btn(variant: 'primary' | 'outline' | 'danger'): React.CSSProperties {
   if (variant === 'primary')
     return { ...base, border: 'none', background: C.green, color: C.white };
   if (variant === 'danger')
-    return { ...base, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A' };
+    return { ...base, border: '1px solid #FDEAEA', background: 'transparent', color: C.error };
   return { ...base, border: `1px solid ${C.border}`, background: 'transparent', color: C.slate };
 }

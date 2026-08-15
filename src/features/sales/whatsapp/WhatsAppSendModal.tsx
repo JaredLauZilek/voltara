@@ -104,7 +104,7 @@ export function WhatsAppSendModal({ quote, onClose }: Props) {
       <div style={{ background: C.seasalt, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>{customer?.name ?? quote.customer_id}</div>
         <div style={{ fontSize: 12, color: C.slate }}>
-          {customer?.phone ?? <span style={{ color: '#C0321A', fontWeight: 600 }}>No phone on file</span>}
+          {customer?.phone ?? <span style={{ color: C.error, fontWeight: 600 }}>No phone on file</span>}
         </div>
       </div>
 
@@ -123,7 +123,7 @@ export function WhatsAppSendModal({ quote, onClose }: Props) {
       </div>
 
       {error && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '10px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8 }}>
           {error}
         </div>
       )}

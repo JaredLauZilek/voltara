@@ -93,7 +93,7 @@ export function TrafficTab() {
           <tbody>
             {byPage.map((p) => (
               <tr key={p.page} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                <td style={{ padding: '13px 16px', fontWeight: 500, color: '#1a1a1a' }}>{p.page}</td>
+                <td style={{ padding: '13px 16px', fontWeight: 500, color: C.ink }}>{p.page}</td>
                 <td style={{ padding: '13px 16px', fontWeight: 700, color: C.green }}>{p.clicks.toLocaleString()}</td>
                 <td style={{ padding: '13px 16px', color: C.slate }}>{p.impressions.toLocaleString()}</td>
                 <td style={{ padding: '13px 16px', color: C.slate }}>{(p.ctr * 100).toFixed(2)}%</td>

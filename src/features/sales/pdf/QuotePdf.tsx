@@ -4,22 +4,8 @@ import type { Quote } from '../types';
 import type { Customer } from '@/features/customers';
 import type { Product } from '@/features/products';
 import type { SalesManager } from '@/features/sales-managers';
+import { C } from '@/shared/tokens';
 
-// ── Voltara brand tokens (mirrored from @/shared/tokens — react-pdf can't
-// import the runtime token object directly because StyleSheet.create resolves
-// at module load before brand colours are known). ──────────────────────────
-const C = {
-  green:    '#1B512D',
-  yellow:   '#FECC3E',
-  honeydew: '#E4F3E3',
-  seasalt:  '#F9F9F9',
-  white:    '#FFFFFF',
-  slate:    '#767B77',
-  border:   '#EBEBEB',
-  divider:  '#F3F3F3',
-  ink:      '#1A1A1A',
-  inkMuted: '#444444',
-};
 
 // ── Register Figtree (per Voltara typography guideline) ─────────────────────
 // react-pdf supports TTF/OTF/WOFF over HTTPS. @fontsource serves WOFF files

@@ -124,7 +124,7 @@ export function GenerateDraftModal({ keywords, competitors, isGenerating, genera
       </div>
 
       {generateError && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '10px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8 }}>
           {generateError.message}
         </div>
       )}

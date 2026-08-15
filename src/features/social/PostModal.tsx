@@ -132,7 +132,7 @@ export function PostModal({ post, defaultDate, onClose, onSave, onDelete }: Prop
         {!isNew && onDelete && (
           <button
             onClick={() => onDelete(post.id)}
-            style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             Delete
           </button>

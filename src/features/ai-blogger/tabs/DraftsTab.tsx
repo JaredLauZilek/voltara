@@ -10,12 +10,12 @@ import { DraftEditorModal } from '../components/DraftEditorModal';
 import { GenerateDraftModal } from '../components/GenerateDraftModal';
 
 const STATUS_COLORS: Record<DraftStatus, { bg: string; color: string }> = {
-  draft:      { bg: '#F3F3F3', color: '#767B77' },
-  approved:   { bg: '#FFF8E1', color: '#B07D00' },
-  scheduled:  { bg: '#E3F0FF', color: '#1A62C0' },
-  publishing: { bg: '#E3F0FF', color: '#1A62C0' },
-  published:  { bg: '#E4F3E3', color: '#1B512D' },
-  failed:     { bg: '#FDEAEA', color: '#C0321A' },
+  draft:      { bg: C.divider, color: C.slate },
+  approved:   { bg: C.warningBg, color: C.warning },
+  scheduled:  { bg: C.infoBg, color: C.info },
+  publishing: { bg: C.infoBg, color: C.info },
+  published:  { bg: C.honeydew, color: C.green },
+  failed:     { bg: C.errorBg, color: C.error },
 };
 
 export function DraftsTab() {
@@ -54,7 +54,7 @@ export function DraftsTab() {
       </div>
 
       {actionError && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '10px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '10px 12px', background: C.errorBg, borderRadius: 8 }}>
           {actionError}
         </div>
       )}
@@ -83,11 +83,11 @@ export function DraftsTab() {
                   <tr
                     key={d.id}
                     onClick={() => setEditing(d)}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FAFAFA')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = C.hoverRow)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     style={{ borderBottom: `1px solid ${C.divider}`, cursor: 'pointer' }}
                   >
-                    <td style={{ padding: '13px 16px', fontWeight: 700, color: '#1a1a1a', maxWidth: 360 }}>
+                    <td style={{ padding: '13px 16px', fontWeight: 700, color: C.ink, maxWidth: 360 }}>
                       <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
                       {d.wix_post_url && (
                         <a

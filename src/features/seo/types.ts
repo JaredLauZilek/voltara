@@ -1,4 +1,5 @@
 import type { Database } from '@/shared/lib/database.types';
+import { C } from '@/shared/tokens';
 
 export type SeoKeyword = Database['public']['Tables']['seo_keywords']['Row'];
 export type SeoRanking = Database['public']['Tables']['seo_rankings']['Row'];
@@ -17,9 +18,9 @@ export type AlertType = SeoAlert['type'];
 export type IntegrationProvider = SeoIntegration['provider'];
 
 export const ALERT_SEVERITY_COLORS: Record<AlertSeverity, { bg: string; color: string; border: string }> = {
-  high:   { bg: '#FDEAEA', color: '#C0321A', border: '#C0321A' },
-  medium: { bg: '#FFF8E1', color: '#B07D00', border: '#B07D00' },
-  low:    { bg: '#F3F3F3', color: '#767B77', border: '#767B77' },
+  high:   { bg: C.errorBg, color: C.error, border: C.error },
+  medium: { bg: C.warningBg, color: C.warning, border: C.warning },
+  low:    { bg: C.divider, color: C.slate, border: C.slate },
 };
 
 export const ALERT_TYPE_LABELS: Record<AlertType, string> = {

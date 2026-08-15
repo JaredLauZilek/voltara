@@ -119,7 +119,7 @@ export function BacklinksTab() {
 }
 
 function SmallStat({ label, value, good = false, bad = false }: { label: string; value: number | string; good?: boolean; bad?: boolean }) {
-  const color = bad ? '#C0321A' : good ? C.green : '#1a1a1a';
+  const color = bad ? C.error : good ? C.green : C.ink;
   return (
     <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, padding: '16px 20px' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
@@ -131,8 +131,8 @@ function SmallStat({ label, value, good = false, bad = false }: { label: string;
 function BacklinkStatus({ status }: { status: 'active' | 'lost' | 'toxic' }) {
   const palette = {
     active: { bg: C.honeydew, color: C.green },
-    lost:   { bg: '#FDEAEA', color: '#C0321A' },
-    toxic:  { bg: '#FFF8E1', color: '#B07D00' },
+    lost:   { bg: C.errorBg, color: C.error },
+    toxic:  { bg: C.warningBg, color: C.warning },
   }[status];
   return (
     <span

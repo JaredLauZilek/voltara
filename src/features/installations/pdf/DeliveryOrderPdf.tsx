@@ -4,19 +4,8 @@ import type { Customer } from '@/features/customers';
 import type { Product } from '@/features/products';
 import type { Quote } from '@/features/sales';
 import type { Installation } from '../types';
+import { C } from '@/shared/tokens';
 
-const C = {
-  green:    '#1B512D',
-  yellow:   '#FECC3E',
-  honeydew: '#E4F3E3',
-  seasalt:  '#F9F9F9',
-  white:    '#FFFFFF',
-  slate:    '#767B77',
-  border:   '#EBEBEB',
-  divider:  '#F3F3F3',
-  ink:      '#1A1A1A',
-  inkMuted: '#444444',
-};
 
 Font.register({
   family: 'Figtree',

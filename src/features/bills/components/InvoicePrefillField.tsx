@@ -211,7 +211,7 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
           </div>
           <DetectedChips parsed={parsed} suppliers={suppliers} installations={installations} customers={customers} />
           {error && (
-            <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>{error}</div>
+            <div style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>{error}</div>
           )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button
@@ -240,8 +240,8 @@ export function InvoicePrefillField({ storagePath, onApply, attached, onClear }:
       )}
 
       {stage === 'error' && (
-        <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FDEAEA', border: '1px solid #FDEAEA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>{error}</span>
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: C.errorBg, border: '1px solid #FDEAEA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>{error}</span>
           <button
             type="button"
             onClick={() => { setStage('idle'); setError(null); }}

@@ -101,7 +101,7 @@ export function LogoUploader({ value, onChange }: Props) {
             marginTop: 8,
             border: 'none',
             background: 'transparent',
-            color: '#C0321A',
+            color: C.error,
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
@@ -113,7 +113,7 @@ export function LogoUploader({ value, onChange }: Props) {
         </button>
       )}
       {error && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#C0321A', fontWeight: 600 }}>{error}</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: C.error, fontWeight: 600 }}>{error}</div>
       )}
     </div>
   );

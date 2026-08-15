@@ -88,7 +88,7 @@ export function ExpenseEntityPicker({ value, onChange }: Props) {
           borderRadius: 10,
           border: `1px solid ${open ? C.green : C.border}`,
           background: C.white,
-          color: value ? '#1a1a1a' : C.slate,
+          color: value ? C.ink : C.slate,
           fontFamily: 'Figtree',
           fontSize: 13,
           fontWeight: 500,
@@ -142,7 +142,7 @@ export function ExpenseEntityPicker({ value, onChange }: Props) {
                     cursor: 'pointer',
                     fontSize: 13,
                     fontWeight: isSelected ? 700 : 500,
-                    color: isSelected ? C.green : '#1a1a1a',
+                    color: isSelected ? C.green : C.ink,
                   }}
                 >
                   <span
@@ -156,7 +156,7 @@ export function ExpenseEntityPicker({ value, onChange }: Props) {
                       <button
                         type="button"
                         onClick={() => handleDelete(ent)}
-                        style={{ fontSize: 11, fontWeight: 700, color: C.white, background: '#C0321A', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Figtree' }}
+                        style={{ fontSize: 11, fontWeight: 700, color: C.white, background: C.error, border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Figtree' }}
                       >
                         Yes
                       </button>
@@ -178,7 +178,7 @@ export function ExpenseEntityPicker({ value, onChange }: Props) {
                         background: 'transparent', color: C.slate, cursor: 'pointer',
                         fontSize: 14, lineHeight: 1, fontFamily: 'Figtree',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#FDEAEA'; e.currentTarget.style.color = '#C0321A'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = C.errorBg; e.currentTarget.style.color = C.error; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.slate; }}
                     >
                       ×
@@ -190,7 +190,7 @@ export function ExpenseEntityPicker({ value, onChange }: Props) {
           </div>
 
           {error && (
-            <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 600, color: '#C0321A', background: '#FDEAEA' }}>
+            <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 600, color: C.error, background: C.errorBg }}>
               {error}
             </div>
           )}

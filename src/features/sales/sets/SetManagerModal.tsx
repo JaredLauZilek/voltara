@@ -223,7 +223,7 @@ function SetEditor({ initial, products, isSaving, saveError, onClose, onSave, on
             </div>
             <button
               onClick={() => removeItem(i)}
-              style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: C.error ?? '#C0321A' }}
+              style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: C.error ?? C.error }}
             >
               ×
             </button>
@@ -242,7 +242,7 @@ function SetEditor({ initial, products, isSaving, saveError, onClose, onSave, on
       </div>
 
       {saveError && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600, padding: '8px 12px', background: '#FDEAEA', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600, padding: '8px 12px', background: C.errorBg, borderRadius: 8 }}>
           {saveError.message || 'Save failed.'}
         </div>
       )}
@@ -251,10 +251,10 @@ function SetEditor({ initial, products, isSaving, saveError, onClose, onSave, on
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>Permanent — cannot be undone.</span>
               <button
                 onClick={onDelete}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -268,7 +268,7 @@ function SetEditor({ initial, products, isSaving, saveError, onClose, onSave, on
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

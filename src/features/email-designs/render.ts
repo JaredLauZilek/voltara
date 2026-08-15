@@ -1,5 +1,6 @@
 import { substitutePlaceholders } from './placeholders';
 import type { CompanyEmailProfile, EmailDesign, PlaceholderContext } from './types';
+import { C } from '@/shared/tokens';
 
 export interface RenderedEmail {
   subject: string;
@@ -39,7 +40,7 @@ function formatAddress(name: string, address: string): string {
 }
 
 export function renderEmailHtml({ design, profile, ctx, brandColor, logoDataUrl }: RenderArgs): RenderedEmail {
-  const accent = design.accent_color || brandColor || '#1B512D';
+  const accent = design.accent_color || brandColor || C.green;
 
   const fromName = (design.from_name || profile.default_from_name || ctx.company.name).trim();
   const fromAddr = (design.from_address || profile.default_from_address).trim();

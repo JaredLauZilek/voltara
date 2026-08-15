@@ -55,28 +55,28 @@ export function EmailPreview({ docType, design, profile }: Props) {
       <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', width: 60 }}>From</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{rendered.from}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{rendered.from}</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', width: 60 }}>To</span>
-          <span style={{ fontSize: 13, color: '#1a1a1a' }}>Lee Cheng Wei &lt;lee.cw@email.com&gt;</span>
+          <span style={{ fontSize: 13, color: C.ink }}>Lee Cheng Wei &lt;lee.cw@email.com&gt;</span>
         </div>
         {rendered.replyTo && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', width: 60 }}>Reply-To</span>
-            <span style={{ fontSize: 13, color: '#1a1a1a' }}>{rendered.replyTo}</span>
+            <span style={{ fontSize: 13, color: C.ink }}>{rendered.replyTo}</span>
           </div>
         )}
         {rendered.cc && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', width: 60 }}>CC</span>
-            <span style={{ fontSize: 13, color: '#1a1a1a' }}>{rendered.cc}</span>
+            <span style={{ fontSize: 13, color: C.ink }}>{rendered.cc}</span>
           </div>
         )}
         {rendered.bcc && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', width: 60 }}>BCC</span>
-            <span style={{ fontSize: 13, color: '#1a1a1a' }}>{rendered.bcc}</span>
+            <span style={{ fontSize: 13, color: C.ink }}>{rendered.bcc}</span>
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 4, borderTop: `1px solid ${C.divider}`, paddingTop: 8 }}>

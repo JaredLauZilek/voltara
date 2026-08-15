@@ -55,7 +55,7 @@ export function CompetitorsTab() {
             <tbody>
               {competitors.map((c) => (
                 <tr key={c.id} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                  <td style={{ padding: '13px 16px', fontWeight: 600, color: '#1a1a1a' }}>{c.domain}</td>
+                  <td style={{ padding: '13px 16px', fontWeight: 600, color: C.ink }}>{c.domain}</td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>{c.label ?? '—'}</td>
                   <td style={{ padding: '13px 16px', color: C.slate }}>
                     {new Date(c.added_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}

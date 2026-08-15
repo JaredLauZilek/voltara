@@ -46,7 +46,7 @@ export function ConnectAPIPrompt({ provider, description, status = 'not_connecte
         <div style={{ fontSize: 13, color: C.slate, marginTop: 4, maxWidth: 480 }}>{description}</div>
       </div>
       {isError && (
-        <div style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+        <div style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
           Last sync failed. Check credentials or retry.
         </div>
       )}

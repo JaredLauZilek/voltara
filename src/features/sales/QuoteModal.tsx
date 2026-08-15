@@ -178,7 +178,7 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
           quote.status then matches form.status. */}
       {/* Warning when reverting Case Won — linked invoice (if any) will be orphaned */}
       {quote && quote.status === 'Case Won' && form.status !== 'Case Won' && (
-        <div style={{ background: '#FDEAEA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+        <div style={{ background: C.errorBg, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: C.error, fontWeight: 600 }}>
           Reverting from Case Won. If an invoice was issued for this quote it will stay in place — stock stays reserved for the invoice. You may want to cancel or delete that invoice separately.
         </div>
       )}
@@ -188,8 +188,8 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
         const isDeducting = form.status === 'Case Won';
         const isRestoring = quote.status === 'Case Won' && !isDeducting;
         if (!isDeducting && !isRestoring) return null;
-        const accentBg = isDeducting ? C.honeydew : '#FFF8E1';
-        const accentText = isDeducting ? C.green : '#B07D00';
+        const accentBg = isDeducting ? C.honeydew : C.warningBg;
+        const accentText = isDeducting ? C.green : C.warning;
         const label = isDeducting
           ? 'Saving will deduct the following from inventory:'
           : 'Saving will restore the following to inventory:';
@@ -215,7 +215,7 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
                     const isService = product?.is_service ?? false;
                     return (
                       <tr key={i} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                        <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 600, color: C.ink }}>
                           {product?.name ?? li.product_id}
                           {isService && (
                             <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: C.slate, background: C.divider, padding: '2px 6px', borderRadius: 6 }}>
@@ -315,7 +315,7 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
                 </div>
                 <button
                   onClick={() => removeItem(i)}
-                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: '#C0321A' }}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: C.error }}
                 >
                   ×
                 </button>
@@ -412,10 +412,10 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>Permanent — cannot be undone.</span>
               <button
                 onClick={() => onDelete(quote.id, quote.customer_po_attachments ?? [], quote.proposal_attachments ?? [])}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -429,7 +429,7 @@ export function QuoteModal({ quote, onClose, onSave, isSaving = false, onDelete 
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

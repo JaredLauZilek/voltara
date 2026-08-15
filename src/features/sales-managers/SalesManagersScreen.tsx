@@ -152,7 +152,7 @@ export function SalesManagersScreen() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <Avatar photo={m.photo_data_url} name={m.name} size={56} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {m.name}
                     </div>
                     <div style={{ fontSize: 11, color: C.slate, marginTop: 2 }}>{m.id}</div>
@@ -172,7 +172,7 @@ export function SalesManagersScreen() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   <div style={{ background: C.seasalt, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Pipeline</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a' }}>{formatRMShort(pipeline)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{formatRMShort(pipeline)}</div>
                   </div>
                   <div style={{ background: C.seasalt, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>Won</div>

@@ -44,11 +44,11 @@ const labelStyle: React.CSSProperties = {
 };
 
 const STATUS_PILL: Record<string, { bg: string; color: string }> = {
-  Draft:            { bg: '#F3F3F3', color: '#767B77' },
-  Sent:             { bg: '#E3F0FF', color: '#1A62C0' },
-  'Partially Paid': { bg: '#FFF8E1', color: '#B07D00' },
-  Paid:             { bg: '#E4F3E3', color: '#1B512D' },
-  Overdue:          { bg: '#FDEAEA', color: '#C0321A' },
+  Draft:            { bg: C.divider, color: C.slate },
+  Sent:             { bg: C.infoBg, color: C.info },
+  'Partially Paid': { bg: C.warningBg, color: C.warning },
+  Paid:             { bg: C.honeydew, color: C.green },
+  Overdue:          { bg: C.errorBg, color: C.error },
   Cancelled:        { bg: '#FFF0E0', color: '#B45309' },
 };
 
@@ -215,7 +215,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           disabled={!isNew}
         />
         {isNew && !form.quote_id && (
-          <div style={{ fontSize: 11, color: '#C0321A', marginTop: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: C.error, marginTop: 6, fontWeight: 600 }}>
             An invoice must be tied to a quotation or proposal.
           </div>
         )}
@@ -244,7 +244,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
               </button>
             )}
             {customerDrift && (
-              <span style={{ fontSize: 11, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: C.error, fontWeight: 600 }}>
                 Customer differs from quote — re-sync to align, or leave as an intentional override.
               </span>
             )}
@@ -321,7 +321,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>RM {lineTotal.toLocaleString()}</div>
                 <button
                   onClick={() => removeItem(i)}
-                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: '#C0321A', fontSize: 14 }}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', color: C.error, fontSize: 14 }}
                 >
                   ×
                 </button>
@@ -412,8 +412,8 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
             : 'Stock adjustment on save (vs last save)';
 
           return (
-            <div style={{ marginTop: 14, background: '#FFF8E1', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#B07D00', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ marginTop: 14, background: C.warningBg, borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.warning, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {headerLabel}
               </div>
               <div style={{ fontSize: 11, color: C.slate, lineHeight: 1.45 }}>
@@ -434,13 +434,13 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
                   <tbody>
                     {diffs.map((d) => {
                       const positive = d.delta > 0;
-                      const tone = positive ? '#C0321A' : C.green;
+                      const tone = positive ? C.error : C.green;
                       return (
                         <tr key={d.productId} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                          <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>{d.name}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: 600, color: C.ink }}>{d.name}</td>
                           <td style={{ padding: '9px 12px', color: C.slate, fontSize: 12 }}>{d.productId}</td>
                           <td style={{ padding: '9px 12px', color: C.slate }}>{d.baselineQty}</td>
-                          <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1a1a1a' }}>{d.currentQty}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: 600, color: C.ink }}>{d.currentQty}</td>
                           <td style={{ padding: '9px 12px', fontWeight: 700, color: tone }}>
                             {positive ? '+' : ''}{d.delta}
                             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: C.slate }}>
@@ -495,7 +495,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
                 onChange={(e) => setForm((f) => ({ ...f, discount: parseFloat(e.target.value) || 0 }))}
                 style={{ width: form.discount_mode === 'amount' ? 80 : 50, padding: '4px 8px', borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: 'Figtree', fontSize: 12, outline: 'none', textAlign: 'center' }}
               />
-              <span style={{ fontSize: 12, color: '#C0321A' }}>− RM {totals.discountAmt.toLocaleString()}</span>
+              <span style={{ fontSize: 12, color: C.error }}>− RM {totals.discountAmt.toLocaleString()}</span>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -557,7 +557,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
             </span>
           </div>
           {overpaidByEdit && (
-            <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#FDEAEA', color: '#C0321A', fontSize: 12, fontWeight: 600 }}>
+            <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: C.errorBg, color: C.error, fontSize: 12, fontWeight: 600 }}>
               Heads up: paid (RM {paidSoFar.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) now exceeds the new total. The invoice will flip to Paid on save, but the RM {(paidSoFar - totals.total).toFixed(2)} excess isn't tracked as a refund — v1 has no refund flow.
             </div>
           )}
@@ -587,10 +587,10 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>Permanent — cannot be undone.</span>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>Permanent — cannot be undone.</span>
               <button
                 onClick={() => onDelete(invoice.id)}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -604,7 +604,7 @@ export function InvoiceModal({ invoice, onClose, onSave, isSaving = false, onDel
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

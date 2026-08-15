@@ -53,7 +53,7 @@ export function AlertItem({ alert, onAcknowledge, busy }: Props) {
             })}
           </span>
         </div>
-        <div style={{ fontSize: 13, color: '#1a1a1a', fontWeight: 500 }}>{alert.message}</div>
+        <div style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{alert.message}</div>
       </div>
       {!acknowledged ? (
         <button

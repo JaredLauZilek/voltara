@@ -11,9 +11,9 @@ function cwvScore(ms: number, good: number, poor: number): 'good' | 'needs' | 'p
 }
 
 const cwvColor: Record<'good' | 'needs' | 'poor', string> = {
-  good: '#22a14b',
-  needs: '#B07D00',
-  poor: '#C0321A',
+  good: C.success,
+  needs: C.warning,
+  poor: C.error,
 };
 
 export function TechnicalTab() {
@@ -61,7 +61,7 @@ export function TechnicalTab() {
             <Donut
               segments={[
                 { value: stats.indexed, color: C.green },
-                { value: stats.notIndexed, color: '#C0321A' },
+                { value: stats.notIndexed, color: C.error },
                 { value: stats.unknown, color: C.divider },
               ]}
             />
@@ -125,8 +125,8 @@ export function TechnicalTab() {
           <tbody>
             {pages.map((p) => (
               <tr key={p.url} style={{ borderBottom: `1px solid ${C.divider}` }}>
-                <td style={{ padding: '13px 16px', color: '#1a1a1a' }}>{p.url}</td>
-                <td style={{ padding: '13px 16px', color: (p.status_code ?? 0) >= 400 ? '#C0321A' : C.slate, fontWeight: 600 }}>
+                <td style={{ padding: '13px 16px', color: C.ink }}>{p.url}</td>
+                <td style={{ padding: '13px 16px', color: (p.status_code ?? 0) >= 400 ? C.error : C.slate, fontWeight: 600 }}>
                   {p.status_code ?? '—'}
                 </td>
                 <td style={{ padding: '13px 16px' }}>
@@ -152,7 +152,7 @@ export function TechnicalTab() {
   );
 }
 
-function LegendRow({ color, label, value, textColor = '#1a1a1a' }: { color: string; label: string; value: number; textColor?: string }) {
+function LegendRow({ color, label, value, textColor = C.ink }: { color: string; label: string; value: number; textColor?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
       <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
@@ -166,7 +166,7 @@ function Stat({ label, value, bad = false }: { label: string; value: number; bad
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <span style={{ fontSize: 13, color: C.slate }}>{label}</span>
-      <span style={{ fontSize: 18, fontWeight: 700, color: bad ? '#C0321A' : C.green }}>{value}</span>
+      <span style={{ fontSize: 18, fontWeight: 700, color: bad ? C.error : C.green }}>{value}</span>
     </div>
   );
 }

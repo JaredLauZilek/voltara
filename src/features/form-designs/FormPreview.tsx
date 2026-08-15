@@ -54,7 +54,7 @@ export function FormPreview({ profile, design, docType }: Props) {
         padding: 28,
         fontFamily: fontStack,
         fontSize: 11,
-        color: '#1a1a1a',
+        color: C.ink,
         minHeight: 600,
         boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
       }}
@@ -89,7 +89,7 @@ export function FormPreview({ profile, design, docType }: Props) {
             {TITLE_BY_TYPE[docType]}
           </div>
           <div style={{ fontSize: 11, color: C.slate }}>
-            <span style={{ fontWeight: 700, color: '#1a1a1a' }}>{REF_BY_TYPE[docType]}</span>
+            <span style={{ fontWeight: 700, color: C.ink }}>{REF_BY_TYPE[docType]}</span>
             <span style={{ marginLeft: 12 }}>Date: 06 May 2026</span>
           </div>
         </div>

@@ -5,7 +5,7 @@
 // the chart is hand-rolled SVG so we can attach pointer handlers per segment.
 
 import { useMemo, useState } from 'react';
-import { C } from '@/shared/tokens';
+import { C, STATUS_COLORS } from '@/shared/tokens';
 import { Donut } from '@/shared/components/charts/Donut';
 import { formatRM, formatRMShort, monthKey, monthLabel } from '@/shared/lib/format';
 import { calcInvoiceTotals } from '@/features/invoices';
@@ -288,7 +288,7 @@ export function SalesPipelineValueCard({ quotes }: PipelineProps) {
   const point = buckets[idx];
 
   const colors: Record<Quote['status'], string> = {
-    Draft: C.slate, Sent: '#1A62C0', 'Case Won': C.green, 'Case Lost': '#C0321A', Expired: '#B45309',
+    Draft: C.slate, Sent: C.info, 'Case Won': C.green, 'Case Lost': C.error, Expired: STATUS_COLORS.Expired.color,
   };
 
   return (
@@ -346,8 +346,8 @@ export function ConversionFunnelCard({ quotes, invoices, installationsCompleted 
     { label: 'Quotes', count: quotesTotal, color: C.opal },
     { label: 'Case Won', count: won, color: C.green },
     { label: 'Invoiced', count: invoiced, color: C.yellow },
-    { label: 'Installed', count: installationsCompleted, color: '#1A62C0' },
-    { label: 'Paid', count: paid, color: '#22a14b' },
+    { label: 'Installed', count: installationsCompleted, color: C.info },
+    { label: 'Paid', count: paid, color: C.success },
   ];
 
   const max = Math.max(1, ...stages.map((s) => s.count));
@@ -444,7 +444,7 @@ export function TopCustomersCard({ customers, invoices }: TopCustomersProps) {
               style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'crosshair' }}
             >
               <div style={{ width: 18, fontSize: 11, color: C.slate, textAlign: 'right' }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
               <div style={{ width: 120, background: C.divider, borderRadius: 99, height: 8, overflow: 'hidden' }}>
                 <div style={{ width: `${(r.value / max) * 100}%`, height: '100%', background: C.green, borderRadius: 99, opacity: hover === i ? 1 : 0.85, transition: 'width .4s' }} />
               </div>
@@ -463,7 +463,7 @@ interface LeadSourceProps {
   customers: Customer[];
 }
 
-const LEAD_COLORS = ['#22a14b', C.opal, '#FECC3E', C.slate] as const;
+const LEAD_COLORS = [C.success, C.opal, C.yellow, C.slate] as const;
 const LEAD_LABELS: Record<string, string> = {
   'WhatsApp (Google)': 'WA · Google',
   'WhatsApp (Meta)': 'WA · Meta',
@@ -512,7 +512,7 @@ export function LeadSourceCard({ customers }: LeadSourceProps) {
               >
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: LEAD_COLORS[i] ?? C.slate, flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 12, color: C.slate }}>{LEAD_LABELS[label] ?? label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: hover === i ? C.green : '#1a1a1a' }}>{v}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: hover === i ? C.green : C.ink }}>{v}</span>
               </div>
             ))}
           </div>
@@ -575,7 +575,7 @@ export function CashFlowCard({ invoices, bills, expenses }: CashFlowProps) {
       readout={
         <span>
           <strong style={{ color: C.green }}>{monthLabel(months[idx])}</strong> · In {formatRMShort(revArr[idx])} · Out {formatRMShort(outArr[idx])} · Net{' '}
-          <span style={{ color: netArr[idx] >= 0 ? C.green : '#C0321A', fontWeight: 700 }}>{formatRMShort(netArr[idx])}</span>
+          <span style={{ color: netArr[idx] >= 0 ? C.green : C.error, fontWeight: 700 }}>{formatRMShort(netArr[idx])}</span>
         </span>
       }
       controls={
@@ -620,10 +620,10 @@ export function CashFlowCard({ invoices, bills, expenses }: CashFlowProps) {
             <span style={{ width: 12, height: 2, background: C.green }} /> Revenue
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 12, height: 2, background: '#C0321A' }} /> Bills + Expenses
+            <span style={{ width: 12, height: 2, background: C.error }} /> Bills + Expenses
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 12, height: 2, background: '#1A62C0', borderTop: '1px dashed #1A62C0' }} /> Net
+            <span style={{ width: 12, height: 2, background: C.info, borderTop: '1px dashed #1A62C0' }} /> Net
           </span>
         </div>
       </div>
@@ -662,7 +662,7 @@ export function LowStockCard({ products }: LowStockProps) {
       readout={
         row ? (
           <span>
-            <strong style={{ color: '#C0321A' }}>{row.name}</strong> · {row.qty} on hand · reorder at {row.reorder_level} · short by {row.deficit}
+            <strong style={{ color: C.error }}>{row.name}</strong> · {row.qty} on hand · reorder at {row.reorder_level} · short by {row.deficit}
           </span>
         ) : (
           <span>Products below reorder level ({rows.length} item{rows.length === 1 ? '' : 's'})</span>
@@ -679,9 +679,9 @@ export function LowStockCard({ products }: LowStockProps) {
               onMouseEnter={() => setHover(i)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'crosshair' }}
             >
-              <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
               <div style={{ width: 120, background: C.divider, borderRadius: 99, height: 8, overflow: 'hidden', position: 'relative' }}>
-                <div style={{ width: `${(r.qty / max) * 100}%`, height: '100%', background: r.qty === 0 ? '#C0321A' : '#B07D00', borderRadius: 99, opacity: hover === i ? 1 : 0.85, transition: 'width .4s' }} />
+                <div style={{ width: `${(r.qty / max) * 100}%`, height: '100%', background: r.qty === 0 ? C.error : C.warning, borderRadius: 99, opacity: hover === i ? 1 : 0.85, transition: 'width .4s' }} />
                 <div
                   style={{
                     position: 'absolute',
@@ -694,7 +694,7 @@ export function LowStockCard({ products }: LowStockProps) {
                   title={`Reorder at ${r.reorder_level}`}
                 />
               </div>
-              <div style={{ width: 70, fontSize: 12, fontWeight: 700, color: '#C0321A', textAlign: 'right' }}>
+              <div style={{ width: 70, fontSize: 12, fontWeight: 700, color: C.error, textAlign: 'right' }}>
                 {r.qty}/{r.reorder_level}
               </div>
             </div>

@@ -90,7 +90,7 @@ export function KeywordsTab() {
                 <td style={{ padding: '13px 16px', textAlign: 'right' }}>
                   <button
                     onClick={() => deleteMut.mutate(k.id)}
-                    style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                   >
                     Delete
                   </button>

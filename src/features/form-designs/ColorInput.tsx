@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function ColorInput({ value, onChange, allowClear = false }: Props) {
-  const safe = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : C.black;
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <input

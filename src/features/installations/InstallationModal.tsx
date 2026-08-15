@@ -146,7 +146,7 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
           nullLabel="— Select a quote / proposal —"
         />
         {!form.quote_id && (
-          <div style={{ fontSize: 11, color: '#C0321A', marginTop: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: C.error, marginTop: 6, fontWeight: 600 }}>
             An installation must be tied to a quotation or proposal.
           </div>
         )}
@@ -198,12 +198,12 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
                               width: 70,
                               padding: '5px 8px',
                               borderRadius: 8,
-                              border: `1px solid ${isOverridden ? '#B07D00' : C.border}`,
-                              background: isOverridden ? '#FFF8E1' : C.white,
+                              border: `1px solid ${isOverridden ? C.warning : C.border}`,
+                              background: isOverridden ? C.warningBg : C.white,
                               fontFamily: 'Figtree',
                               fontSize: 12,
                               fontWeight: 700,
-                              color: isOverridden ? '#B07D00' : '#1a1a1a',
+                              color: isOverridden ? C.warning : C.ink,
                               outline: 'none',
                               textAlign: 'center',
                             }}
@@ -316,12 +316,12 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
         {!isNew && onDelete && (
           confirmDelete ? (
             <>
-              <span style={{ fontSize: 12, color: '#C0321A', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: C.error, fontWeight: 600 }}>
                 Permanent — cannot be undone.
               </span>
               <button
                 onClick={() => onDelete(installation.id)}
-                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#C0321A', color: '#FFFFFF', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: C.error, color: C.white, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Confirm Delete
               </button>
@@ -335,7 +335,7 @@ export function InstallationModal({ installation, onClose, onSave, isSaving = fa
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: '#C0321A', fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #FDEAEA', background: 'transparent', color: C.error, fontFamily: 'Figtree', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Delete
             </button>

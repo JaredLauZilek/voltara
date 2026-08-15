@@ -432,7 +432,7 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{expense.id}</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a1a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {expense.entity ?? <span style={{ fontStyle: 'italic', color: C.slate, fontWeight: 500 }}>No entity</span>}
           </div>
         </div>
@@ -467,7 +467,7 @@ function RecurringCard({ expense, onClick }: { expense: Expense; onClick: () => 
       <div style={{ borderTop: `1px solid ${C.divider}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
           <span style={{ color: C.slate }}>Periods</span>
-          <span style={{ fontWeight: 700, color: '#1a1a1a' }}>{periods.length}</span>
+          <span style={{ fontWeight: 700, color: C.ink }}>{periods.length}</span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {paid > 0 && (

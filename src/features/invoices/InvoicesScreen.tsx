@@ -16,11 +16,11 @@ import { INVOICE_STATUSES } from './types';
 import type { Invoice, InvoiceInsert } from './types';
 
 const STATUS_COLORS: Record<Invoice['status'], { bg: string; color: string }> = {
-  Draft:            { bg: '#F3F3F3', color: '#767B77' },
-  Sent:             { bg: '#E3F0FF', color: '#1A62C0' },
-  'Partially Paid': { bg: '#FFF8E1', color: '#B07D00' },
-  Paid:             { bg: '#E4F3E3', color: '#1B512D' },
-  Overdue:          { bg: '#FDEAEA', color: '#C0321A' },
+  Draft:            { bg: C.divider, color: C.slate },
+  Sent:             { bg: C.infoBg, color: C.info },
+  'Partially Paid': { bg: C.warningBg, color: C.warning },
+  Paid:             { bg: C.honeydew, color: C.green },
+  Overdue:          { bg: C.errorBg, color: C.error },
   Cancelled:        { bg: '#FFF0E0', color: '#B45309' },
 };
 
